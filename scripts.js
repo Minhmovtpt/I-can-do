@@ -1,15 +1,26 @@
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import {
-  getPaths,
-  subscribe,
-  tasksApi,
-  notesApi,
-  financeApi,
-  dailyTasksApi,
-  habitsApi,
-  focusApi,
-  activityApi
-} from "./firebaseService.js";
-import { applyReward } from "./rewardEngine.js";
+  getDatabase,
+  ref,
+  get,
+  update,
+  push,
+  onValue,
+  set
+} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyAPHwqlZhzpE_fR3d5LuOpmTJQoxmMC-nM",
+  authDomain: "database-tracking-29f0a.firebaseapp.com",
+  databaseURL: "https://database-tracking-29f0a-default-rtdb.firebaseio.com",
+  projectId: "database-tracking-29f0a",
+  storageBucket: "database-tracking-29f0a.firebasestorage.app",
+  messagingSenderId: "360569185652",
+  appId: "1:360569185652:web:e4578b58055a72ee68f821"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
 
 const elements = {
   atk: document.getElementById("atk"),
@@ -21,25 +32,13 @@ const elements = {
   wis: document.getElementById("wis"),
   level: document.getElementById("level"),
   exp: document.getElementById("exp"),
-  statBars: {
-    atk: document.getElementById("bar-atk"),
-    int: document.getElementById("bar-int"),
-    disc: document.getElementById("bar-disc"),
-    cre: document.getElementById("bar-cre"),
-    end: document.getElementById("bar-end"),
-    foc: document.getElementById("bar-foc"),
-    wis: document.getElementById("bar-wis")
-  },
   dailyTaskList: document.getElementById("dailyTaskList"),
   taskInput: document.getElementById("taskInput"),
-  taskDescriptionInput: document.getElementById("taskDescriptionInput"),
   addTaskBtn: document.getElementById("addTaskBtn"),
   taskList: document.getElementById("taskList"),
   habitList: document.getElementById("habitList"),
   focusTimer: document.getElementById("focusTimer"),
   focusButtons: document.querySelectorAll(".focus-controls button"),
-  cancelFocusBtn: document.getElementById("cancelFocusBtn"),
-  focusSessionList: document.getElementById("focusSessionList"),
   noteInput: document.getElementById("noteInput"),
   saveNoteBtn: document.getElementById("saveNoteBtn"),
   notesList: document.getElementById("notesList"),
@@ -47,56 +46,81 @@ const elements = {
   typeInput: document.getElementById("typeInput"),
   addTransactionBtn: document.getElementById("addTransactionBtn"),
   transactionList: document.getElementById("transactionList"),
-  balance: document.getElementById("balance"),
-  activityLogList: document.getElementById("activityLogList")
+  balance: document.getElementById("balance")
 };
 
-const paths = getPaths();
+const refs = {
+  stats: ref(db, "stats"),
+  dailyTasks: ref(db, "dailyTasks"),
+  tasks: ref(db, "tasks"),
+  habits: ref(db, "habits"),
+  focusSessions: ref(db, "focusSessions"),
+  notes: ref(db, "notes"),
+  finance: ref(db, "finance"),
+  financeTransactions: ref(db, "finance/transactions")
+};
+
 let focusInterval = null;
-let activeSessionId = null;
-let activeSessionStart = null;
-let activeSessionDuration = null;
+let activeFocusSessionRef = null;
 
-function buildActions(actions) {
-  const wrap = document.createElement("div");
-  wrap.className = "item-actions";
-  actions.forEach(({ label, onClick, className }) => {
-    const btn = document.createElement("button");
-    btn.textContent = label;
-    btn.className = className || "";
-    btn.addEventListener("click", onClick);
-    wrap.appendChild(btn);
-  });
-  return wrap;
+function checkLevelUp(stats) {
+  while (stats.exp >= stats.level * 100) {
+    stats.exp -= stats.level * 100;
+    stats.level += 1;
+  }
 }
 
-function updateTimerDisplay(seconds) {
-  const safe = Math.max(0, seconds);
-  const mm = Math.floor(safe / 60);
-  const ss = safe % 60;
-  elements.focusTimer.textContent = `${String(mm).padStart(2, "0")}:${String(ss).padStart(2, "0")}`;
-}
+async function applyReward(reward = {}) {
+  const snapshot = await get(refs.stats);
+  const stats = snapshot.val() || {
+    atk: 0,
+    int: 0,
+    disc: 0,
+    cre: 0,
+    end: 0,
+    foc: 0,
+    wis: 0,
+    exp: 0,
+    level: 1
+  };
 
-function renderStatBar(statKey, value) {
-  const percent = Math.min(100, Math.round((Math.max(0, value) / 100) * 100));
-  const bar = elements.statBars[statKey];
-  if (!bar) return;
-  bar.style.width = `${percent}%`;
+  const updatedStats = {
+    atk: stats.atk + (reward.atk || 0),
+    int: stats.int + (reward.int || 0),
+    disc: stats.disc + (reward.disc || 0),
+    cre: stats.cre + (reward.cre || 0),
+    end: stats.end + (reward.end || 0),
+    foc: stats.foc + (reward.foc || 0),
+    wis: stats.wis + (reward.wis || 0),
+    exp: stats.exp + (reward.exp || 0),
+    level: stats.level
+  };
+
+  checkLevelUp(updatedStats);
+  await set(refs.stats, updatedStats);
 }
 
 function renderStats(stats) {
   if (!stats) return;
-  ["atk", "int", "disc", "cre", "end", "foc", "wis"].forEach((key) => {
-    const value = stats[key] ?? 0;
-    elements[key].textContent = value;
-    renderStatBar(key, value);
-  });
+  elements.atk.textContent = stats.atk ?? 0;
+  elements.int.textContent = stats.int ?? 0;
+  elements.disc.textContent = stats.disc ?? 0;
+  elements.cre.textContent = stats.cre ?? 0;
+  elements.end.textContent = stats.end ?? 0;
+  elements.foc.textContent = stats.foc ?? 0;
+  elements.wis.textContent = stats.wis ?? 0;
   elements.level.textContent = stats.level ?? 1;
   elements.exp.textContent = stats.exp ?? 0;
 }
 
+function loadStats() {
+  onValue(refs.stats, (snapshot) => renderStats(snapshot.val()));
+}
+
 async function completeDailyTask(taskId) {
-  const task = await dailyTasksApi.getById(taskId);
+  const taskRef = ref(db, `dailyTasks/${taskId}`);
+  const snapshot = await get(taskRef);
+  const task = snapshot.val();
   if (!task) return;
 
   const today = new Date().toDateString();
@@ -105,100 +129,70 @@ async function completeDailyTask(taskId) {
     return;
   }
 
-  await applyReward(task.reward || {}, { source: task.title || "Daily Task" });
-  await dailyTasksApi.patchById(taskId, { lastCompleted: today });
+  await applyReward(task.reward || {});
+  await update(taskRef, { lastCompleted: today });
 }
 
 function loadDailyTasks() {
-  dailyTasksApi.subscribe((tasks) => {
+  onValue(refs.dailyTasks, (snapshot) => {
+    const tasks = snapshot.val();
     elements.dailyTaskList.innerHTML = "";
     if (!tasks) return;
 
     Object.entries(tasks).forEach(([id, task]) => {
       const li = document.createElement("li");
-      const title = document.createElement("span");
-      title.textContent = task.title;
-      li.appendChild(title);
-
-      li.appendChild(buildActions([
-        { label: "Complete", onClick: () => completeDailyTask(id) }
-      ]));
-
+      const button = document.createElement("button");
+      button.textContent = task.title;
+      button.addEventListener("click", () => completeDailyTask(id));
+      li.appendChild(button);
       elements.dailyTaskList.appendChild(li);
+    });
+  });
+}
+
+function loadTasks() {
+  onValue(refs.tasks, (snapshot) => {
+    const tasks = snapshot.val();
+    elements.taskList.innerHTML = "";
+    if (!tasks) return;
+
+    Object.values(tasks).forEach((task) => {
+      const li = document.createElement("li");
+      li.textContent = task.title;
+      elements.taskList.appendChild(li);
     });
   });
 }
 
 async function addTask() {
   const title = elements.taskInput.value.trim();
-  const description = elements.taskDescriptionInput.value.trim();
   if (!title) return;
 
-  await tasksApi.addTask({
+  await push(refs.tasks, {
     title,
-    description,
+    description: "",
     completed: false,
     reward: { exp: 20 },
     createdAt: Date.now()
   });
 
   elements.taskInput.value = "";
-  elements.taskDescriptionInput.value = "";
 }
 
-async function editTask(taskId, task) {
-  const title = prompt("Edit task title:", task.title || "");
-  if (title === null) return;
-  const description = prompt("Edit task description:", task.description || "");
-  if (description === null) return;
+function loadHabits() {
+  onValue(refs.habits, (snapshot) => {
+    const habits = snapshot.val();
+    elements.habitList.innerHTML = "";
+    if (!habits) return;
 
-  await tasksApi.updateById(taskId, {
-    title: title.trim() || task.title,
-    description: description.trim(),
-    updatedAt: Date.now()
-  });
-}
-
-async function deleteTask(taskId) {
-  await tasksApi.deleteById(taskId);
-}
-
-async function completeTask(taskId, task) {
-  if (task.completed) return;
-  await applyReward(task.reward || { exp: 20 }, { source: task.title || "Task" });
-  await tasksApi.updateById(taskId, { completed: true, completedAt: Date.now() });
-}
-
-function loadTasks() {
-  tasksApi.subscribe((tasks) => {
-    elements.taskList.innerHTML = "";
-    if (!tasks) return;
-
-    Object.entries(tasks)
-      .sort(([, a], [, b]) => (b.createdAt || 0) - (a.createdAt || 0))
-      .forEach(([id, task]) => {
-        const li = document.createElement("li");
-
-        const text = document.createElement("div");
-        text.className = "item-main";
-        text.textContent = `${task.title}${task.description ? ` — ${task.description}` : ""}`;
-        if (task.completed) {
-          text.classList.add("is-completed");
-        }
-        li.appendChild(text);
-
-        li.appendChild(buildActions([
-          {
-            label: "Complete",
-            className: task.completed ? "btn-muted" : "",
-            onClick: () => completeTask(id, task)
-          },
-          { label: "Edit", onClick: () => editTask(id, task) },
-          { label: "Delete", className: "btn-danger", onClick: () => deleteTask(id) }
-        ]));
-
-        elements.taskList.appendChild(li);
-      });
+    Object.entries(habits).forEach(([id, habit]) => {
+      const li = document.createElement("li");
+      const button = document.createElement("button");
+      button.textContent = `${habit.title} (streak: ${habit.streak || 0})`;
+      button.addEventListener("click", () => completeHabit(id, habit));
+      li.appendChild(button);
+      elements.habitList.appendChild(li);
+    });
   });
 }
 
@@ -208,147 +202,74 @@ async function completeHabit(habitId, habit) {
     alert("Habit already completed today");
     return;
   }
-  await applyReward(habit.reward || {}, { source: habit.title || "Habit" });
-  await habitsApi.patchById(habitId, {
+
+  const habitRef = ref(db, `habits/${habitId}`);
+  await applyReward(habit.reward || {});
+  await update(habitRef, {
     lastCompleted: today,
     streak: (habit.streak || 0) + 1
   });
 }
 
-function loadHabits() {
-  habitsApi.subscribe((habits) => {
-    elements.habitList.innerHTML = "";
-    if (!habits) return;
-
-    Object.entries(habits).forEach(([id, habit]) => {
-      const li = document.createElement("li");
-      const title = document.createElement("span");
-      title.textContent = `${habit.title} (streak: ${habit.streak || 0})`;
-      li.appendChild(title);
-      li.appendChild(buildActions([
-        { label: "Complete", onClick: () => completeHabit(id, habit) }
-      ]));
-      elements.habitList.appendChild(li);
-    });
-  });
-}
-
-async function beginFocusSession(minutes) {
-  if (activeSessionId) {
-    alert("A focus session is already active.");
-    return;
-  }
-
-  const sessionRef = await focusApi.addSession({
-    startTime: Date.now(),
-    duration: minutes,
-    status: "active",
-    endedAt: null,
-    createdAt: Date.now()
-  });
-
-  activeSessionId = sessionRef.key;
-  activeSessionStart = Date.now();
-  activeSessionDuration = minutes;
-
-  await focusApi.setSessionState({
-    focusSessionActive: true,
-    sessionId: activeSessionId,
-    startTime: activeSessionStart,
-    duration: activeSessionDuration
-  });
-
-  startFocusTimer(activeSessionStart, activeSessionDuration);
-}
-
-function startFocusTimer(startTime, durationMinutes) {
-  if (focusInterval) clearInterval(focusInterval);
-
-  const totalSeconds = durationMinutes * 60;
-  const tick = async () => {
-    const elapsedSeconds = Math.floor((Date.now() - startTime) / 1000);
-    const remaining = totalSeconds - elapsedSeconds;
-    updateTimerDisplay(remaining);
-
-    if (remaining <= 0) {
-      clearInterval(focusInterval);
-      focusInterval = null;
-
-      if (activeSessionId) {
-        await focusApi.updateSessionById(activeSessionId, {
-          status: "completed",
-          endedAt: Date.now()
-        });
-      }
-
-      await focusApi.clearSessionState();
-      activeSessionId = null;
-      await applyReward({ foc: 5, exp: 10 }, { source: "Focus Session" });
-    }
-  };
-
-  tick();
-  focusInterval = setInterval(tick, 1000);
-}
-
-async function cancelActiveFocusSession() {
-  if (!activeSessionId) return;
-
+function startFocus(minutes) {
   if (focusInterval) {
     clearInterval(focusInterval);
     focusInterval = null;
   }
 
-  await focusApi.updateSessionById(activeSessionId, {
-    status: "cancelled",
-    endedAt: Date.now()
+  let seconds = minutes * 60;
+  const reward = { foc: 5, exp: 10 };
+  const now = Date.now();
+  activeFocusSessionRef = push(refs.focusSessions);
+
+  set(activeFocusSessionRef, {
+    durationMinutes: minutes,
+    startedAt: now,
+    endedAt: null,
+    completed: false,
+    reward
   });
-  await focusApi.clearSessionState();
 
-  activeSessionId = null;
-  activeSessionStart = null;
-  activeSessionDuration = null;
-  updateTimerDisplay(0);
+  updateTimerDisplay(seconds);
+
+  focusInterval = setInterval(async () => {
+    seconds -= 1;
+    updateTimerDisplay(seconds);
+
+    if (seconds <= 0) {
+      clearInterval(focusInterval);
+      focusInterval = null;
+      await applyReward(reward);
+
+      if (activeFocusSessionRef) {
+        await update(activeFocusSessionRef, {
+          endedAt: Date.now(),
+          completed: true
+        });
+      }
+    }
+  }, 1000);
 }
 
-async function deleteFocusSession(sessionId) {
-  if (sessionId === activeSessionId) {
-    await cancelActiveFocusSession();
-  }
-  await focusApi.deleteSessionById(sessionId);
+function updateTimerDisplay(seconds) {
+  const safeSeconds = Math.max(0, seconds);
+  const m = Math.floor(safeSeconds / 60);
+  const s = safeSeconds % 60;
+  elements.focusTimer.textContent = `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
 }
 
-async function restoreFocusSessionIfAny() {
-  const state = await focusApi.getSessionState();
-  if (!state || !state.focusSessionActive) return;
+function loadNotes() {
+  onValue(refs.notes, (snapshot) => {
+    const notes = snapshot.val();
+    elements.notesList.innerHTML = "";
+    if (!notes) return;
 
-  activeSessionId = state.sessionId;
-  activeSessionStart = state.startTime;
-  activeSessionDuration = state.duration;
-  startFocusTimer(activeSessionStart, activeSessionDuration);
-}
-
-function loadFocusSessions() {
-  focusApi.subscribeSessions((sessions) => {
-    elements.focusSessionList.innerHTML = "";
-    if (!sessions) return;
-
-    Object.entries(sessions)
-      .sort(([, a], [, b]) => (b.createdAt || 0) - (a.createdAt || 0))
-      .forEach(([id, session]) => {
+    Object.values(notes)
+      .sort((a, b) => (b.date || 0) - (a.date || 0))
+      .forEach((note) => {
         const li = document.createElement("li");
-        const text = document.createElement("span");
-        text.textContent = `${session.duration}m — ${session.status || "unknown"}`;
-        li.appendChild(text);
-
-        const actions = [];
-        if (id === activeSessionId && session.status === "active") {
-          actions.push({ label: "Cancel", onClick: cancelActiveFocusSession });
-        }
-        actions.push({ label: "Delete", className: "btn-danger", onClick: () => deleteFocusSession(id) });
-        li.appendChild(buildActions(actions));
-
-        elements.focusSessionList.appendChild(li);
+        li.textContent = note.content;
+        elements.notesList.appendChild(li);
       });
   });
 }
@@ -357,44 +278,35 @@ async function saveNote() {
   const content = elements.noteInput.value.trim();
   if (!content) return;
 
-  await notesApi.addNote({ content, date: Date.now() });
+  await push(refs.notes, {
+    content,
+    date: Date.now()
+  });
+
   elements.noteInput.value = "";
 }
 
-async function editNote(noteId, note) {
-  const nextContent = prompt("Edit note:", note.content || "");
-  if (nextContent === null) return;
+function loadFinance() {
+  onValue(refs.financeTransactions, (snapshot) => {
+    const transactions = snapshot.val();
+    elements.transactionList.innerHTML = "";
 
-  await notesApi.updateById(noteId, {
-    content: nextContent.trim() || note.content,
-    date: Date.now()
-  });
-}
+    let balance = 0;
+    const items = transactions ? Object.values(transactions) : [];
 
-async function deleteNote(noteId) {
-  await notesApi.deleteById(noteId);
-}
+    items
+      .sort((a, b) => (b.date || 0) - (a.date || 0))
+      .forEach((transaction) => {
+        const sign = transaction.type === "expense" ? -1 : 1;
+        balance += sign * Number(transaction.amount || 0);
 
-function loadNotes() {
-  notesApi.subscribe((notes) => {
-    elements.notesList.innerHTML = "";
-    if (!notes) return;
-
-    Object.entries(notes)
-      .sort(([, a], [, b]) => (b.date || 0) - (a.date || 0))
-      .forEach(([id, note]) => {
         const li = document.createElement("li");
-        const content = document.createElement("span");
-        content.textContent = note.content;
-        li.appendChild(content);
-
-        li.appendChild(buildActions([
-          { label: "Edit", onClick: () => editNote(id, note) },
-          { label: "Delete", className: "btn-danger", onClick: () => deleteNote(id) }
-        ]));
-
-        elements.notesList.appendChild(li);
+        li.textContent = `${transaction.type}: ${transaction.amount}`;
+        elements.transactionList.appendChild(li);
       });
+
+    elements.balance.textContent = balance;
+    update(refs.finance, { balance });
   });
 }
 
@@ -402,7 +314,7 @@ async function addTransaction() {
   const amount = Number(elements.amountInput.value);
   if (!amount) return;
 
-  await financeApi.addTransaction({
+  await push(refs.financeTransactions, {
     amount,
     type: elements.typeInput.value,
     date: Date.now()
@@ -411,92 +323,26 @@ async function addTransaction() {
   elements.amountInput.value = "";
 }
 
-async function editTransaction(txId, tx) {
-  const nextAmount = prompt("Edit amount:", String(tx.amount));
-  if (nextAmount === null) return;
-
-  const parsed = Number(nextAmount);
-  if (!parsed) return;
-
-  await financeApi.updateTransactionById(txId, {
-    amount: parsed,
-    date: Date.now()
-  });
-}
-
-async function deleteTransaction(txId) {
-  await financeApi.deleteTransactionById(txId);
-}
-
-function loadFinance() {
-  financeApi.subscribeTransactions(async (transactions) => {
-    elements.transactionList.innerHTML = "";
-
-    let balance = 0;
-    const rows = transactions ? Object.entries(transactions) : [];
-
-    rows
-      .sort(([, a], [, b]) => (b.date || 0) - (a.date || 0))
-      .forEach(([id, tx]) => {
-        const sign = tx.type === "expense" ? -1 : 1;
-        balance += sign * Number(tx.amount || 0);
-
-        const li = document.createElement("li");
-        const text = document.createElement("span");
-        text.textContent = `${tx.type}: ${tx.amount}`;
-        li.appendChild(text);
-
-        li.appendChild(buildActions([
-          { label: "Edit", onClick: () => editTransaction(id, tx) },
-          { label: "Delete", className: "btn-danger", onClick: () => deleteTransaction(id) }
-        ]));
-
-        elements.transactionList.appendChild(li);
-      });
-
-    elements.balance.textContent = balance;
-    await financeApi.patchFinance({ balance });
-  });
-}
-
-function loadActivityLog() {
-  activityApi.subscribe((entries) => {
-    elements.activityLogList.innerHTML = "";
-    if (!entries) return;
-
-    Object.values(entries)
-      .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))
-      .slice(0, 20)
-      .forEach((entry) => {
-        const li = document.createElement("li");
-        li.textContent = entry.message || `+${entry.value} ${String(entry.stat || "").toUpperCase()}`;
-        elements.activityLogList.appendChild(li);
-      });
-  });
-}
-
 function bindEvents() {
   elements.addTaskBtn.addEventListener("click", addTask);
   elements.saveNoteBtn.addEventListener("click", saveNote);
   elements.addTransactionBtn.addEventListener("click", addTransaction);
-  elements.cancelFocusBtn.addEventListener("click", cancelActiveFocusSession);
 
   elements.focusButtons.forEach((button) => {
-    button.addEventListener("click", () => beginFocusSession(Number(button.dataset.duration)));
+    button.addEventListener("click", () => {
+      startFocus(Number(button.dataset.duration));
+    });
   });
 }
 
 function init() {
   bindEvents();
-  subscribe(paths.stats, renderStats);
+  loadStats();
   loadDailyTasks();
   loadTasks();
   loadHabits();
   loadNotes();
   loadFinance();
-  loadFocusSessions();
-  loadActivityLog();
-  restoreFocusSessionIfAny();
 }
 
 init();

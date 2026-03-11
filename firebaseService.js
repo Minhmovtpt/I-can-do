@@ -7,8 +7,7 @@ import {
   update,
   push,
   onValue,
-  off,
-  remove
+  off
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
 const firebaseConfig = {
@@ -64,10 +63,7 @@ export async function create(path, value) {
   return push(pathRef(path), value);
 }
 
-export async function destroy(path) {
-  await remove(pathRef(path));
-}
-
+// Domain helpers
 export function getPaths() {
   return paths;
 }
@@ -79,24 +75,18 @@ export const statsApi = {
 
 export const tasksApi = {
   addTask: (task) => create(paths.tasks, task),
-  subscribe: (callback) => subscribe(paths.tasks, callback),
-  updateById: (taskId, value) => patch(`${paths.tasks}/${taskId}`, value),
-  deleteById: (taskId) => destroy(`${paths.tasks}/${taskId}`)
+  subscribe: (callback) => subscribe(paths.tasks, callback)
 };
 
 export const notesApi = {
   addNote: (note) => create(paths.notes, note),
-  subscribe: (callback) => subscribe(paths.notes, callback),
-  updateById: (noteId, value) => patch(`${paths.notes}/${noteId}`, value),
-  deleteById: (noteId) => destroy(`${paths.notes}/${noteId}`)
+  subscribe: (callback) => subscribe(paths.notes, callback)
 };
 
 export const financeApi = {
   addTransaction: (tx) => create(paths.financeTransactions, tx),
   subscribeTransactions: (callback) => subscribe(paths.financeTransactions, callback),
-  patchFinance: (value) => patch(paths.finance, value),
-  updateTransactionById: (txId, value) => patch(`${paths.financeTransactions}/${txId}`, value),
-  deleteTransactionById: (txId) => destroy(`${paths.financeTransactions}/${txId}`)
+  patchFinance: (value) => patch(paths.finance, value)
 };
 
 export const dailyTasksApi = {
@@ -114,10 +104,7 @@ export const focusApi = {
   getSessionState: () => read(paths.focusSessionState),
   setSessionState: (state) => write(paths.focusSessionState, state),
   clearSessionState: () => write(paths.focusSessionState, null),
-  addSession: (session) => create(paths.focusSessions, session),
-  subscribeSessions: (callback) => subscribe(paths.focusSessions, callback),
-  updateSessionById: (sessionId, value) => patch(`${paths.focusSessions}/${sessionId}`, value),
-  deleteSessionById: (sessionId) => destroy(`${paths.focusSessions}/${sessionId}`)
+  addSession: (session) => create(paths.focusSessions, session)
 };
 
 export const activityApi = {
