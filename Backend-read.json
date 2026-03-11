@@ -1,0 +1,118 @@
+{
+  "stats": {
+    "atk": 0,
+    "int": 0,
+    "disc": 0,
+    "cre": 0,
+    "end": 0,
+    "foc": 0,
+    "wis": 0,
+    "exp": 0,
+    "level": 1
+  },
+
+  "dailyTasks": {
+    "drawPractice": {
+      "title": "Draw Practice",
+      "reward": {
+        "cre": 5,
+        "foc": 2,
+        "exp": 10
+      },
+      "lastCompleted": null
+    },
+    "workout": {
+      "title": "Workout",
+      "reward": {
+        "end": 5,
+        "disc": 2,
+        "exp": 10
+      },
+      "lastCompleted": null
+    },
+    "study": {
+      "title": "Study",
+      "reward": {
+        "int": 5,
+        "foc": 3,
+        "exp": 12
+      },
+      "lastCompleted": null
+    },
+    "journal": {
+      "title": "Journal",
+      "reward": {
+        "wis": 4,
+        "exp": 8
+      },
+      "lastCompleted": null
+    }
+  },
+
+  "tasks": {
+    "portfolioRedesign": {
+      "title": "Portfolio Redesign",
+      "description": "Rebuild personal portfolio website",
+      "reward": {
+        "atk": 10,
+        "cre": 5,
+        "exp": 50
+      },
+      "completed": false,
+      "createdAt": null
+    },
+    "clientProject": {
+      "title": "Client Project",
+      "description": "Finish branding project",
+      "reward": {
+        "atk": 15,
+        "disc": 5,
+        "exp": 80
+      },
+      "completed": false,
+      "createdAt": null
+    }
+  },
+
+  "habits": {
+    "drawDaily": {
+      "title": "Draw Daily",
+      "streak": 0,
+      "lastCompleted": null,
+      "reward": {
+        "cre": 2,
+        "disc": 1,
+        "exp": 5
+      }
+    },
+    "exercise": {
+      "title": "Exercise",
+      "streak": 0,
+      "lastCompleted": null,
+      "reward": {
+        "end": 3,
+        "disc": 1,
+        "exp": 5
+      }
+    },
+    "meditate": {
+      "title": "Meditate",
+      "streak": 0,
+      "lastCompleted": null,
+      "reward": {
+        "wis": 3,
+        "foc": 2,
+        "exp": 5
+      }
+    }
+  },
+
+  "focusSessions": {},
+
+  "notes": {},
+
+  "finance": {
+    "balance": 0,
+    "transactions": {}
+  }
+}
