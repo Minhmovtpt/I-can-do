@@ -4,217 +4,126 @@
   <meta charset="UTF-8">
   <title>Life RPG Dashboard</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
   <link rel="stylesheet" href="style.css">
 </head>
 
 <body>
-
   <div class="dashboard">
 
-    <!-- ===================== -->
-    <!-- STATS -->
-    <!-- ===================== -->
     <section class="card stats">
-
       <h2>Character Stats</h2>
 
       <div class="stats-grid">
-
         <div class="stat">
           <span>ATK</span>
           <strong id="atk">0</strong>
+          <div class="progress"><div id="bar-atk" class="bar"></div></div>
         </div>
 
         <div class="stat">
           <span>INT</span>
           <strong id="int">0</strong>
+          <div class="progress"><div id="bar-int" class="bar"></div></div>
         </div>
 
         <div class="stat">
           <span>DISC</span>
           <strong id="disc">0</strong>
+          <div class="progress"><div id="bar-disc" class="bar"></div></div>
         </div>
 
         <div class="stat">
           <span>CRE</span>
           <strong id="cre">0</strong>
+          <div class="progress"><div id="bar-cre" class="bar"></div></div>
         </div>
 
         <div class="stat">
           <span>END</span>
           <strong id="end">0</strong>
+          <div class="progress"><div id="bar-end" class="bar"></div></div>
         </div>
 
         <div class="stat">
           <span>FOC</span>
           <strong id="foc">0</strong>
+          <div class="progress"><div id="bar-foc" class="bar"></div></div>
         </div>
 
         <div class="stat">
           <span>WIS</span>
           <strong id="wis">0</strong>
+          <div class="progress"><div id="bar-wis" class="bar"></div></div>
         </div>
-
       </div>
 
       <div class="level-box">
-
-        <div>
-          Level: <strong id="level">1</strong>
-        </div>
-
-        <div>
-          EXP: <strong id="exp">0</strong>
-        </div>
-
+        <div>Level: <strong id="level">1</strong></div>
+        <div>EXP: <strong id="exp">0</strong></div>
       </div>
-
     </section>
 
-
-    <!-- ===================== -->
-    <!-- DAILY TASKS -->
-    <!-- ===================== -->
     <section class="card daily">
-
       <h2>Daily Tasks</h2>
-
-      <ul id="dailyTaskList">
-      </ul>
-
+      <ul id="dailyTaskList"></ul>
     </section>
 
-
-    <!-- ===================== -->
-    <!-- TASKS -->
-    <!-- ===================== -->
     <section class="card tasks">
-
       <h2>Tasks</h2>
-
       <div class="task-input">
-
-        <input
-          type="text"
-          id="taskInput"
-          placeholder="Add new task..."
-        >
-
-        <button id="addTaskBtn">
-          Add
-        </button>
-
+        <input type="text" id="taskInput" placeholder="Add new task...">
+        <button id="addTaskBtn">Add</button>
       </div>
-
-      <ul id="taskList">
-      </ul>
-
+      <ul id="taskList"></ul>
     </section>
 
-
-    <!-- ===================== -->
-    <!-- HABITS -->
-    <!-- ===================== -->
     <section class="card habits">
-
       <h2>Habits</h2>
-
-      <ul id="habitList">
-      </ul>
-
+      <ul id="habitList"></ul>
     </section>
 
-
-    <!-- ===================== -->
-    <!-- FOCUS -->
-    <!-- ===================== -->
     <section class="card focus">
-
       <h2>Focus Session</h2>
-
       <div class="focus-controls">
-
-        <button data-duration="90">
-          Start 90 min
-        </button>
-
-        <button data-duration="120">
-          Start 120 min
-        </button>
-
+        <button data-duration="90">Start 90 min</button>
+        <button data-duration="120">Start 120 min</button>
       </div>
-
-      <div class="focus-timer" id="focusTimer">
-        00:00
-      </div>
-
+      <div class="focus-timer" id="focusTimer">00:00</div>
     </section>
 
-
-    <!-- ===================== -->
-    <!-- NOTES -->
-    <!-- ===================== -->
     <section class="card notes">
-
       <h2>Notes</h2>
-
-      <textarea
-        id="noteInput"
-        placeholder="Write quick note..."
-      ></textarea>
-
-      <button id="saveNoteBtn">
-        Save
-      </button>
-
-      <ul id="notesList">
-      </ul>
-
+      <textarea id="noteInput" placeholder="Write quick note..."></textarea>
+      <button id="saveNoteBtn">Save</button>
+      <ul id="notesList"></ul>
     </section>
 
-
-    <!-- ===================== -->
-    <!-- FINANCE -->
-    <!-- ===================== -->
     <section class="card finance">
-
       <h2>Finance</h2>
-
       <div class="balance">
         Balance:
         <strong id="balance">0</strong>
       </div>
 
       <div class="finance-input">
-
-        <input
-          type="number"
-          id="amountInput"
-          placeholder="Amount"
-        >
-
+        <input type="number" id="amountInput" placeholder="Amount">
         <select id="typeInput">
           <option value="income">Income</option>
           <option value="expense">Expense</option>
         </select>
-
-        <button id="addTransactionBtn">
-          Add
-        </button>
-
+        <button id="addTransactionBtn">Add</button>
       </div>
 
-      <ul id="transactionList">
-      </ul>
-
+      <ul id="transactionList"></ul>
     </section>
 
+    <section class="card activity">
+      <h2>Activity Log</h2>
+      <ul id="activityLogList"></ul>
+    </section>
 
   </div>
 
   <script type="module" src="scripts.js"></script>
-
 </body>
 </html>
-```

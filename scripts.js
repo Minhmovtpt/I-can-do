@@ -1,382 +1,318 @@
-// =========================
-// FIREBASE IMPORT
-// =========================
-
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-
 import {
-  getDatabase,
-  ref,
-  get,
-  set,
-  update,
-  push,
-  onValue
-} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+  getPaths,
+  subscribe,
+  tasksApi,
+  notesApi,
+  financeApi,
+  dailyTasksApi,
+  habitsApi,
+  focusApi,
+  activityApi
+} from "./firebaseService.js";
+import { applyReward } from "./rewardEngine.js";
 
-
-// =========================
-// FIREBASE CONFIG
-// =========================
-
-const firebaseConfig = {
-  apiKey: "AIzaSyAPHwqlZhzpE_fR3d5LuOpmTJQoxmMC-nM",
-  authDomain: "database-tracking-29f0a.firebaseapp.com",
-  databaseURL: "https://database-tracking-29f0a-default-rtdb.firebaseio.com",
-  projectId: "database-tracking-29f0a",
-  storageBucket: "database-tracking-29f0a.firebasestorage.app",
-  messagingSenderId: "360569185652",
-  appId: "1:360569185652:web:e4578b58055a72ee68f821"
+const elements = {
+  atk: document.getElementById("atk"),
+  int: document.getElementById("int"),
+  disc: document.getElementById("disc"),
+  cre: document.getElementById("cre"),
+  end: document.getElementById("end"),
+  foc: document.getElementById("foc"),
+  wis: document.getElementById("wis"),
+  level: document.getElementById("level"),
+  exp: document.getElementById("exp"),
+  statBars: {
+    atk: document.getElementById("bar-atk"),
+    int: document.getElementById("bar-int"),
+    disc: document.getElementById("bar-disc"),
+    cre: document.getElementById("bar-cre"),
+    end: document.getElementById("bar-end"),
+    foc: document.getElementById("bar-foc"),
+    wis: document.getElementById("bar-wis")
+  },
+  dailyTaskList: document.getElementById("dailyTaskList"),
+  taskInput: document.getElementById("taskInput"),
+  addTaskBtn: document.getElementById("addTaskBtn"),
+  taskList: document.getElementById("taskList"),
+  habitList: document.getElementById("habitList"),
+  focusTimer: document.getElementById("focusTimer"),
+  focusButtons: document.querySelectorAll(".focus-controls button"),
+  noteInput: document.getElementById("noteInput"),
+  saveNoteBtn: document.getElementById("saveNoteBtn"),
+  notesList: document.getElementById("notesList"),
+  amountInput: document.getElementById("amountInput"),
+  typeInput: document.getElementById("typeInput"),
+  addTransactionBtn: document.getElementById("addTransactionBtn"),
+  transactionList: document.getElementById("transactionList"),
+  balance: document.getElementById("balance"),
+  activityLogList: document.getElementById("activityLogList")
 };
 
+const paths = getPaths();
+let focusInterval = null;
 
-// =========================
-// INIT FIREBASE
-// =========================
+function updateTimerDisplay(seconds) {
+  const safe = Math.max(0, seconds);
+  const mm = Math.floor(safe / 60);
+  const ss = safe % 60;
+  elements.focusTimer.textContent = `${String(mm).padStart(2, "0")}:${String(ss).padStart(2, "0")}`;
+}
 
-const app = initializeApp(firebaseConfig);
+function renderStatBar(statKey, value) {
+  const cap = 100;
+  const percent = Math.min(100, Math.round((Math.max(0, value) / cap) * 100));
+  const bar = elements.statBars[statKey];
+  if (!bar) return;
 
-const db = getDatabase(app);
+  bar.style.width = `${percent}%`;
+  bar.setAttribute("aria-valuenow", String(value));
+}
 
-
-// =========================
-// STATS REFERENCES
-// =========================
-
-const statsRef = ref(db, "stats");
-
-
-// =========================
-// LOAD STATS FROM DATABASE
-// =========================
-
-function loadStats() {
-
-  onValue(statsRef, (snapshot) => {
-
-    const stats = snapshot.val();
-
-    if (!stats) return;
-
-    document.getElementById("atk").textContent = stats.atk;
-    document.getElementById("int").textContent = stats.int;
-    document.getElementById("disc").textContent = stats.disc;
-    document.getElementById("cre").textContent = stats.cre;
-    document.getElementById("end").textContent = stats.end;
-    document.getElementById("foc").textContent = stats.foc;
-    document.getElementById("wis").textContent = stats.wis;
-
-    document.getElementById("level").textContent = stats.level;
-    document.getElementById("exp").textContent = stats.exp;
-
+function renderStats(stats) {
+  if (!stats) return;
+  ["atk", "int", "disc", "cre", "end", "foc", "wis"].forEach((key) => {
+    const value = stats[key] ?? 0;
+    elements[key].textContent = value;
+    renderStatBar(key, value);
   });
 
+  elements.level.textContent = stats.level ?? 1;
+  elements.exp.textContent = stats.exp ?? 0;
 }
-
-
-// =========================
-// REWARD SYSTEM
-// =========================
-
-async function applyReward(reward) {
-
-  const snapshot = await get(statsRef);
-
-  const stats = snapshot.val();
-
-  const updatedStats = {
-
-    atk: stats.atk + (reward.atk || 0),
-
-    int: stats.int + (reward.int || 0),
-
-    disc: stats.disc + (reward.disc || 0),
-
-    cre: stats.cre + (reward.cre || 0),
-
-    end: stats.end + (reward.end || 0),
-
-    foc: stats.foc + (reward.foc || 0),
-
-    wis: stats.wis + (reward.wis || 0),
-
-    exp: stats.exp + (reward.exp || 0),
-
-    level: stats.level
-
-  };
-
-  checkLevelUp(updatedStats);
-
-  update(statsRef, updatedStats);
-
-}
-
-
-// =========================
-// LEVEL SYSTEM
-// =========================
-
-function checkLevelUp(stats) {
-
-  while (stats.exp >= stats.level * 100) {
-
-    stats.exp -= stats.level * 100;
-
-    stats.level += 1;
-
-  }
-
-}
-
-
-// =========================
-// DAILY TASK COMPLETE
-// =========================
 
 async function completeDailyTask(taskId) {
-
-  const taskRef = ref(db, "dailyTasks/" + taskId);
-
-  const snapshot = await get(taskRef);
-
-  const task = snapshot.val();
+  const task = await dailyTasksApi.getById(taskId);
+  if (!task) return;
 
   const today = new Date().toDateString();
-
   if (task.lastCompleted === today) {
-
     alert("Already completed today");
-
     return;
-
   }
 
-  await applyReward(task.reward);
-
-  update(taskRef, {
-
-    lastCompleted: today
-
-  });
-
+  await applyReward(task.reward || {}, { source: task.title || "Daily Task" });
+  await dailyTasksApi.patchById(taskId, { lastCompleted: today });
 }
-
-
-// =========================
-// LOAD DAILY TASKS
-// =========================
 
 function loadDailyTasks() {
+  dailyTasksApi.subscribe((tasks) => {
+    elements.dailyTaskList.innerHTML = "";
+    if (!tasks) return;
 
-  const dailyRef = ref(db, "dailyTasks");
-
-  const list = document.getElementById("dailyTaskList");
-
-  onValue(dailyRef, (snapshot) => {
-
-    list.innerHTML = "";
-
-    const tasks = snapshot.val();
-
-    for (const id in tasks) {
-
-      const task = tasks[id];
-
+    Object.entries(tasks).forEach(([id, task]) => {
       const li = document.createElement("li");
-
       const button = document.createElement("button");
-
       button.textContent = task.title;
-
-      button.onclick = () => completeDailyTask(id);
-
+      button.addEventListener("click", () => completeDailyTask(id));
       li.appendChild(button);
-
-      list.appendChild(li);
-
-    }
-
+      elements.dailyTaskList.appendChild(li);
+    });
   });
-
 }
 
-
-// =========================
-// INIT APP
-// =========================
-
-function init() {
-
-  loadStats();
-
-  loadDailyTasks();
-
-  loadTasks();
-
-  loadNotes();
-
-}
-
-init();
-
-
-const taskInput = document.getElementById("taskInput");
-const addTaskBtn = document.getElementById("addTaskBtn");
-const taskList = document.getElementById("taskList");
-
-const tasksRef = ref(db, "tasks");
-
-addTaskBtn.onclick = async () => {
-
-  const title = taskInput.value.trim();
-
+async function addTask() {
+  const title = elements.taskInput.value.trim();
   if (!title) return;
 
-  const newTask = {
-    title: title,
+  await tasksApi.addTask({
+    title,
     description: "",
     completed: false,
     reward: { exp: 20 },
     createdAt: Date.now()
-  };
-
-  await push(tasksRef, newTask);
-
-  taskInput.value = "";
-
-};
-
-function loadTasks(){
-
-  onValue(tasksRef, (snapshot)=>{
-
-    taskList.innerHTML="";
-
-    const tasks = snapshot.val();
-    if(!tasks) return;
-
-    for(const id in tasks){
-
-      const task = tasks[id];
-
-      const li = document.createElement("li");
-      li.textContent = task.title;
-
-      taskList.appendChild(li);
-
-    }
-
   });
 
+  elements.taskInput.value = "";
 }
 
-const focusTimer = document.getElementById("focusTimer");
-const focusButtons = document.querySelectorAll(".focus-controls button");
+function loadTasks() {
+  tasksApi.subscribe((tasks) => {
+    elements.taskList.innerHTML = "";
+    if (!tasks) return;
 
-focusButtons.forEach(btn => {
-
-  btn.onclick = () => startFocus(parseInt(btn.dataset.duration));
-
-});
-
-function startFocus(minutes){
-
-  let seconds = minutes * 60;
-
-  const interval = setInterval(()=>{
-
-    seconds--;
-
-    const m = Math.floor(seconds/60);
-    const s = seconds % 60;
-
-    focusTimer.textContent =
-      String(m).padStart(2,"0") + ":" +
-      String(s).padStart(2,"0");
-
-    if(seconds <= 0){
-
-      clearInterval(interval);
-
-      applyReward({ foc:5, exp:10 });
-
-    }
-
-  },1000);
-
+    Object.values(tasks)
+      .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))
+      .forEach((task) => {
+        const li = document.createElement("li");
+        li.textContent = task.title;
+        elements.taskList.appendChild(li);
+      });
+  });
 }
 
+async function completeHabit(habitId, habit) {
+  const today = new Date().toDateString();
+  if (habit.lastCompleted === today) {
+    alert("Habit already completed today");
+    return;
+  }
 
-const noteInput = document.getElementById("noteInput");
-const saveNoteBtn = document.getElementById("saveNoteBtn");
-const notesList = document.getElementById("notesList");
+  await applyReward(habit.reward || {}, { source: habit.title || "Habit" });
+  await habitsApi.patchById(habitId, {
+    lastCompleted: today,
+    streak: (habit.streak || 0) + 1
+  });
+}
 
-const notesRef = ref(db,"notes");
+function loadHabits() {
+  habitsApi.subscribe((habits) => {
+    elements.habitList.innerHTML = "";
+    if (!habits) return;
 
-saveNoteBtn.onclick = async ()=>{
+    Object.entries(habits).forEach(([id, habit]) => {
+      const li = document.createElement("li");
+      const button = document.createElement("button");
+      button.textContent = `${habit.title} (streak: ${habit.streak || 0})`;
+      button.addEventListener("click", () => completeHabit(id, habit));
+      li.appendChild(button);
+      elements.habitList.appendChild(li);
+    });
+  });
+}
 
-  const content = noteInput.value.trim();
-  if(!content) return;
-
-  const note = {
-    content: content,
-    date: Date.now()
+async function beginFocusSession(minutes) {
+  const state = {
+    focusSessionActive: true,
+    startTime: Date.now(),
+    duration: minutes
   };
 
-  await push(notesRef,note);
+  await focusApi.setSessionState(state);
+  await focusApi.addSession({ ...state, completed: false, endedAt: null });
+  startFocusTimer(state.startTime, state.duration);
+}
 
-  noteInput.value="";
+function startFocusTimer(startTime, durationMinutes) {
+  if (focusInterval) {
+    clearInterval(focusInterval);
+  }
 
-};
+  const totalSeconds = durationMinutes * 60;
 
-function loadNotes(){
+  const tick = async () => {
+    const elapsedSeconds = Math.floor((Date.now() - startTime) / 1000);
+    const remaining = totalSeconds - elapsedSeconds;
+    updateTimerDisplay(remaining);
 
-  onValue(notesRef,(snapshot)=>{
-
-    notesList.innerHTML="";
-
-    const notes = snapshot.val();
-    if(!notes) return;
-
-    for(const id in notes){
-
-      const note = notes[id];
-
-      const li = document.createElement("li");
-      li.textContent = note.content;
-
-      notesList.appendChild(li);
-
+    if (remaining <= 0) {
+      clearInterval(focusInterval);
+      focusInterval = null;
+      await focusApi.clearSessionState();
+      await applyReward({ foc: 5, exp: 10 }, { source: "Focus Session" });
     }
+  };
 
+  tick();
+  focusInterval = setInterval(tick, 1000);
+}
+
+async function restoreFocusSessionIfAny() {
+  const state = await focusApi.getSessionState();
+  if (!state || !state.focusSessionActive) return;
+  startFocusTimer(state.startTime, state.duration);
+}
+
+async function saveNote() {
+  const content = elements.noteInput.value.trim();
+  if (!content) return;
+
+  await notesApi.addNote({
+    content,
+    date: Date.now()
   });
 
+  elements.noteInput.value = "";
 }
 
-const amountInput = document.getElementById("amountInput");
-const typeInput = document.getElementById("typeInput");
-const addTransactionBtn = document.getElementById("addTransactionBtn");
-const transactionList = document.getElementById("transactionList");
+function loadNotes() {
+  notesApi.subscribe((notes) => {
+    elements.notesList.innerHTML = "";
+    if (!notes) return;
 
-const financeRef = ref(db,"finance/transactions");
+    Object.values(notes)
+      .sort((a, b) => (b.date || 0) - (a.date || 0))
+      .forEach((note) => {
+        const li = document.createElement("li");
+        li.textContent = note.content;
+        elements.notesList.appendChild(li);
+      });
+  });
+}
 
-addTransactionBtn.onclick = async ()=>{
+async function addTransaction() {
+  const amount = Number(elements.amountInput.value);
+  if (!amount) return;
 
-  const amount = Number(amountInput.value);
-
-  if(!amount) return;
-
-  const transaction = {
-
-    amount: amount,
-    type: typeInput.value,
+  await financeApi.addTransaction({
+    amount,
+    type: elements.typeInput.value,
     date: Date.now()
+  });
 
-  };
+  elements.amountInput.value = "";
+}
 
-  await push(financeRef,transaction);
+function loadFinance() {
+  financeApi.subscribeTransactions(async (transactions) => {
+    elements.transactionList.innerHTML = "";
 
-  amountInput.value="";
+    let balance = 0;
+    const rows = transactions ? Object.values(transactions) : [];
 
-};
+    rows
+      .sort((a, b) => (b.date || 0) - (a.date || 0))
+      .forEach((tx) => {
+        const sign = tx.type === "expense" ? -1 : 1;
+        balance += sign * Number(tx.amount || 0);
+
+        const li = document.createElement("li");
+        li.textContent = `${tx.type}: ${tx.amount}`;
+        elements.transactionList.appendChild(li);
+      });
+
+    elements.balance.textContent = balance;
+    await financeApi.patchFinance({ balance });
+  });
+}
+
+function loadActivityLog() {
+  activityApi.subscribe((entries) => {
+    elements.activityLogList.innerHTML = "";
+    if (!entries) return;
+
+    Object.values(entries)
+      .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))
+      .slice(0, 20)
+      .forEach((entry) => {
+        const li = document.createElement("li");
+        li.textContent = entry.message || `+${entry.value} ${String(entry.stat || "").toUpperCase()}`;
+        elements.activityLogList.appendChild(li);
+      });
+  });
+}
+
+function bindEvents() {
+  elements.addTaskBtn.addEventListener("click", addTask);
+  elements.saveNoteBtn.addEventListener("click", saveNote);
+  elements.addTransactionBtn.addEventListener("click", addTransaction);
+
+  elements.focusButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+      beginFocusSession(Number(button.dataset.duration));
+    });
+  });
+}
+
+function init() {
+  bindEvents();
+  subscribe(paths.stats, renderStats);
+  loadDailyTasks();
+  loadTasks();
+  loadHabits();
+  loadNotes();
+  loadFinance();
+  loadActivityLog();
+  restoreFocusSessionIfAny();
+}
+
+init();
