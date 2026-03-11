@@ -8,5 +8,6 @@ export {
   dailyTasksApi,
   habitsApi,
   focusApi,
-  activityApi
+  activityApi,
+  calendarApi,
 } from "./firebaseService.js";

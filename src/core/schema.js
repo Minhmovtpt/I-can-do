@@ -8,5 +8,7 @@ export const PATHS = Object.freeze({
   financeTransactions: "finance/transactions",
   focusSessionState: "focus/sessionState",
   focusSessions: "focus/sessions",
-  activityLog: "activityLog"
+  activityLog: "activityLog",
+  calendar: "calendar",
+  calendarEvents: "calendar/events",
 });
