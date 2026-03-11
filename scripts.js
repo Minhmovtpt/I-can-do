@@ -212,7 +212,171 @@ function init() {
 
   loadDailyTasks();
 
+  loadTasks();
+
+  loadNotes();
+
 }
 
 init();
 
+
+const taskInput = document.getElementById("taskInput");
+const addTaskBtn = document.getElementById("addTaskBtn");
+const taskList = document.getElementById("taskList");
+
+const tasksRef = ref(db, "tasks");
+
+addTaskBtn.onclick = async () => {
+
+  const title = taskInput.value.trim();
+
+  if (!title) return;
+
+  const newTask = {
+    title: title,
+    description: "",
+    completed: false,
+    reward: { exp: 20 },
+    createdAt: Date.now()
+  };
+
+  await push(tasksRef, newTask);
+
+  taskInput.value = "";
+
+};
+
+function loadTasks(){
+
+  onValue(tasksRef, (snapshot)=>{
+
+    taskList.innerHTML="";
+
+    const tasks = snapshot.val();
+    if(!tasks) return;
+
+    for(const id in tasks){
+
+      const task = tasks[id];
+
+      const li = document.createElement("li");
+      li.textContent = task.title;
+
+      taskList.appendChild(li);
+
+    }
+
+  });
+
+}
+
+const focusTimer = document.getElementById("focusTimer");
+const focusButtons = document.querySelectorAll(".focus-controls button");
+
+focusButtons.forEach(btn => {
+
+  btn.onclick = () => startFocus(parseInt(btn.dataset.duration));
+
+});
+
+function startFocus(minutes){
+
+  let seconds = minutes * 60;
+
+  const interval = setInterval(()=>{
+
+    seconds--;
+
+    const m = Math.floor(seconds/60);
+    const s = seconds % 60;
+
+    focusTimer.textContent =
+      String(m).padStart(2,"0") + ":" +
+      String(s).padStart(2,"0");
+
+    if(seconds <= 0){
+
+      clearInterval(interval);
+
+      applyReward({ foc:5, exp:10 });
+
+    }
+
+  },1000);
+
+}
+
+
+const noteInput = document.getElementById("noteInput");
+const saveNoteBtn = document.getElementById("saveNoteBtn");
+const notesList = document.getElementById("notesList");
+
+const notesRef = ref(db,"notes");
+
+saveNoteBtn.onclick = async ()=>{
+
+  const content = noteInput.value.trim();
+  if(!content) return;
+
+  const note = {
+    content: content,
+    date: Date.now()
+  };
+
+  await push(notesRef,note);
+
+  noteInput.value="";
+
+};
+
+function loadNotes(){
+
+  onValue(notesRef,(snapshot)=>{
+
+    notesList.innerHTML="";
+
+    const notes = snapshot.val();
+    if(!notes) return;
+
+    for(const id in notes){
+
+      const note = notes[id];
+
+      const li = document.createElement("li");
+      li.textContent = note.content;
+
+      notesList.appendChild(li);
+
+    }
+
+  });
+
+}
+
+const amountInput = document.getElementById("amountInput");
+const typeInput = document.getElementById("typeInput");
+const addTransactionBtn = document.getElementById("addTransactionBtn");
+const transactionList = document.getElementById("transactionList");
+
+const financeRef = ref(db,"finance/transactions");
+
+addTransactionBtn.onclick = async ()=>{
+
+  const amount = Number(amountInput.value);
+
+  if(!amount) return;
+
+  const transaction = {
+
+    amount: amount,
+    type: typeInput.value,
+    date: Date.now()
+
+  };
+
+  await push(financeRef,transaction);
+
+  amountInput.value="";
+
+};
