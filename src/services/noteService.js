@@ -1,5 +1,5 @@
-import { notesApi } from "../firebaseService.js";
-import { requireNonEmptyText } from "../validation.js";
+import { notesApi } from "../core/firebaseService.js";
+import { requireNonEmptyText } from "../core/validation.js";
 
 export async function createNote(content) {
   return notesApi.add({

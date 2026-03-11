@@ -1,5 +1,5 @@
-import { tasksApi } from "../firebaseService.js";
-import { requireNonEmptyText } from "../validation.js";
+import { tasksApi } from "../core/firebaseService.js";
+import { requireNonEmptyText } from "../core/validation.js";
 
 function formatTaskPayload({ title, description = "" }) {
   return {

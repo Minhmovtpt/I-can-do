@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { calculateBalance } from "../financeLogic.js";
+import { calculateBalance } from "../src/core/financeLogic.js";
 
 test("calculateBalance sums income and subtracts expenses", () => {
   const transactions = {

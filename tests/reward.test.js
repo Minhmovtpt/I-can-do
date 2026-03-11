@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { applyRewardLocally, resolveReward } from "../rewardLogic.js";
+import { applyRewardLocally, resolveReward } from "../src/core/rewardLogic.js";
 
 test("resolveReward normalizes numeric reward values", () => {
   assert.deepEqual(resolveReward({ exp: "20", foc: 5 }), { exp: 20, foc: 5 });

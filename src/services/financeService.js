@@ -1,7 +1,7 @@
-import { financeApi } from "../firebaseService.js";
-import { requireAmount, requireEnum } from "../validation.js";
+import { financeApi } from "../core/firebaseService.js";
+import { requireAmount, requireEnum } from "../core/validation.js";
 
-import { calculateBalance } from "../financeLogic.js";
+import { calculateBalance } from "../core/financeLogic.js";
 
 export async function createTransaction({ amount, type }) {
   return financeApi.addTransaction({

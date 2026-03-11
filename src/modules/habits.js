@@ -1,5 +1,5 @@
-import { habitsApi } from "./firebase.js";
-import { applyReward } from "./rewardEngine.js";
+import { habitsApi } from "../core/firebase.js";
+import { applyReward } from "../core/rewardEngine.js";
 
 function buildActions(actions) {
   const wrap = document.createElement("div");

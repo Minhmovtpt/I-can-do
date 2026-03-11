@@ -1,6 +1,6 @@
-import { dailyTasksApi, tasksApi } from "./firebase.js";
-import { applyReward } from "./rewardEngine.js";
-import { createTask, updateTask, deleteTask, completeTask as markTaskComplete } from "./services/taskService.js";
+import { dailyTasksApi, tasksApi } from "../core/firebase.js";
+import { applyReward } from "../core/rewardEngine.js";
+import { createTask, updateTask, deleteTask, completeTask as markTaskComplete } from "../services/taskService.js";
 
 function buildActions(actions) {
   const wrap = document.createElement("div");
