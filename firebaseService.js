@@ -8,7 +8,8 @@ import {
   push,
   onValue,
   off,
-  remove
+  remove,
+  runTransaction
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
 const firebaseConfig = {
@@ -37,14 +38,29 @@ const paths = {
   activityLog: "activityLog"
 };
 
+const activeListeners = new Map();
+
 function pathRef(path) {
   return ref(db, path);
 }
 
 export function subscribe(path, callback) {
   const targetRef = pathRef(path);
-  onValue(targetRef, (snapshot) => callback(snapshot.val()));
-  return () => off(targetRef);
+
+  if (activeListeners.has(path)) {
+    off(targetRef, "value", activeListeners.get(path));
+  }
+
+  const handler = (snapshot) => callback(snapshot.val());
+  onValue(targetRef, handler);
+  activeListeners.set(path, handler);
+
+  return () => {
+    off(targetRef, "value", handler);
+    if (activeListeners.get(path) === handler) {
+      activeListeners.delete(path);
+    }
+  };
 }
 
 export async function read(path) {
@@ -68,25 +84,34 @@ export async function destroy(path) {
   await remove(pathRef(path));
 }
 
+export async function transaction(path, updater) {
+  const txRef = pathRef(path);
+  const txResult = await runTransaction(txRef, updater);
+  return txResult.snapshot.val();
+}
+
 export function getPaths() {
   return paths;
 }
 
 export const statsApi = {
   get: () => read(paths.stats),
-  set: (stats) => write(paths.stats, stats)
+  set: (stats) => write(paths.stats, stats),
+  transact: (updater) => transaction(paths.stats, updater)
 };
 
 export const tasksApi = {
-  addTask: (task) => create(paths.tasks, task),
+  add: (task) => create(paths.tasks, task),
   subscribe: (callback) => subscribe(paths.tasks, callback),
+  getById: (taskId) => read(`${paths.tasks}/${taskId}`),
   updateById: (taskId, value) => patch(`${paths.tasks}/${taskId}`, value),
   deleteById: (taskId) => destroy(`${paths.tasks}/${taskId}`)
 };
 
 export const notesApi = {
-  addNote: (note) => create(paths.notes, note),
+  add: (note) => create(paths.notes, note),
   subscribe: (callback) => subscribe(paths.notes, callback),
+  getById: (noteId) => read(`${paths.notes}/${noteId}`),
   updateById: (noteId, value) => patch(`${paths.notes}/${noteId}`, value),
   deleteById: (noteId) => destroy(`${paths.notes}/${noteId}`)
 };
@@ -95,6 +120,7 @@ export const financeApi = {
   addTransaction: (tx) => create(paths.financeTransactions, tx),
   subscribeTransactions: (callback) => subscribe(paths.financeTransactions, callback),
   patchFinance: (value) => patch(paths.finance, value),
+  getTransactionById: (txId) => read(`${paths.financeTransactions}/${txId}`),
   updateTransactionById: (txId, value) => patch(`${paths.financeTransactions}/${txId}`, value),
   deleteTransactionById: (txId) => destroy(`${paths.financeTransactions}/${txId}`)
 };
@@ -107,6 +133,7 @@ export const dailyTasksApi = {
 
 export const habitsApi = {
   subscribe: (callback) => subscribe(paths.habits, callback),
+  getById: (habitId) => read(`${paths.habits}/${habitId}`),
   patchById: (habitId, value) => patch(`${paths.habits}/${habitId}`, value)
 };
 
@@ -116,6 +143,7 @@ export const focusApi = {
   clearSessionState: () => write(paths.focusSessionState, null),
   addSession: (session) => create(paths.focusSessions, session),
   subscribeSessions: (callback) => subscribe(paths.focusSessions, callback),
+  getSessionById: (sessionId) => read(`${paths.focusSessions}/${sessionId}`),
   updateSessionById: (sessionId, value) => patch(`${paths.focusSessions}/${sessionId}`, value),
   deleteSessionById: (sessionId) => destroy(`${paths.focusSessions}/${sessionId}`)
 };
