@@ -1,5 +1,4 @@
-import { habitsApi } from "../core/firebase.js";
-import { applyReward } from "../core/rewardEngine.js";
+import { completeHabit, subscribeHabits } from "../services/habitService.js";
 
 function buildActions(actions) {
   const wrap = document.createElement("div");
@@ -13,31 +12,16 @@ function buildActions(actions) {
   return wrap;
 }
 
-function nextHabitState(habit) {
-  const today = new Date().toDateString();
-  const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toDateString();
-  const last = habit.lastCompleted;
-
-  if (last === today) {
-    throw new Error("Habit already completed today");
-  }
-
-  const streak = last === yesterday ? (habit.streak || 0) + 1 : 1;
-  return { lastCompleted: today, streak };
-}
-
 export function initHabits(elements, notifyError) {
-  async function completeHabit(habitId, habit) {
+  async function onCompleteHabit(habitId, habit) {
     try {
-      const nextState = nextHabitState(habit);
-      await applyReward(habit.reward || {}, { source: habit.title || "Habit" });
-      await habitsApi.patchById(habitId, nextState);
+      await completeHabit(habitId, habit);
     } catch (error) {
       notifyError(error, "Failed to complete habit");
     }
   }
 
-  return habitsApi.subscribe((habits) => {
+  return subscribeHabits((habits) => {
     elements.habitList.innerHTML = "";
     if (!habits) return;
 
@@ -46,7 +30,7 @@ export function initHabits(elements, notifyError) {
       const title = document.createElement("span");
       title.textContent = `${habit.title} (streak: ${habit.streak || 0})`;
       li.appendChild(title);
-      li.appendChild(buildActions([{ label: "Complete", onClick: () => completeHabit(id, habit) }]));
+      li.appendChild(buildActions([{ label: "Complete", onClick: () => onCompleteHabit(id, habit) }]));
       elements.habitList.appendChild(li);
     });
   });

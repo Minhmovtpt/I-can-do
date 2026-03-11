@@ -11,6 +11,7 @@ import {
   remove,
   runTransaction
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+import { PATHS } from "./schema.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyAPHwqlZhzpE_fR3d5LuOpmTJQoxmMC-nM",
@@ -24,19 +25,6 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
-
-const paths = {
-  stats: "stats",
-  dailyTasks: "dailyTasks",
-  tasks: "tasks",
-  habits: "habits",
-  notes: "notes",
-  finance: "finance",
-  financeTransactions: "finance/transactions",
-  focusSessionState: "focus/sessionState",
-  focusSessions: "focus/sessions",
-  activityLog: "activityLog"
-};
 
 const activeListeners = new Map();
 
@@ -61,6 +49,13 @@ export function subscribe(path, callback) {
       activeListeners.delete(path);
     }
   };
+}
+
+export function unsubscribeAll() {
+  activeListeners.forEach((handler, path) => {
+    off(pathRef(path), "value", handler);
+  });
+  activeListeners.clear();
 }
 
 export async function read(path) {
@@ -91,64 +86,64 @@ export async function transaction(path, updater) {
 }
 
 export function getPaths() {
-  return paths;
+  return PATHS;
 }
 
 export const statsApi = {
-  get: () => read(paths.stats),
-  set: (stats) => write(paths.stats, stats),
-  transact: (updater) => transaction(paths.stats, updater)
+  get: () => read(PATHS.stats),
+  set: (stats) => write(PATHS.stats, stats),
+  transact: (updater) => transaction(PATHS.stats, updater)
 };
 
 export const tasksApi = {
-  add: (task) => create(paths.tasks, task),
-  subscribe: (callback) => subscribe(paths.tasks, callback),
-  getById: (taskId) => read(`${paths.tasks}/${taskId}`),
-  updateById: (taskId, value) => patch(`${paths.tasks}/${taskId}`, value),
-  deleteById: (taskId) => destroy(`${paths.tasks}/${taskId}`)
+  add: (task) => create(PATHS.tasks, task),
+  subscribe: (callback) => subscribe(PATHS.tasks, callback),
+  getById: (taskId) => read(`${PATHS.tasks}/${taskId}`),
+  updateById: (taskId, value) => patch(`${PATHS.tasks}/${taskId}`, value),
+  deleteById: (taskId) => destroy(`${PATHS.tasks}/${taskId}`)
 };
 
 export const notesApi = {
-  add: (note) => create(paths.notes, note),
-  subscribe: (callback) => subscribe(paths.notes, callback),
-  getById: (noteId) => read(`${paths.notes}/${noteId}`),
-  updateById: (noteId, value) => patch(`${paths.notes}/${noteId}`, value),
-  deleteById: (noteId) => destroy(`${paths.notes}/${noteId}`)
+  add: (note) => create(PATHS.notes, note),
+  subscribe: (callback) => subscribe(PATHS.notes, callback),
+  getById: (noteId) => read(`${PATHS.notes}/${noteId}`),
+  updateById: (noteId, value) => patch(`${PATHS.notes}/${noteId}`, value),
+  deleteById: (noteId) => destroy(`${PATHS.notes}/${noteId}`)
 };
 
 export const financeApi = {
-  addTransaction: (tx) => create(paths.financeTransactions, tx),
-  subscribeTransactions: (callback) => subscribe(paths.financeTransactions, callback),
-  patchFinance: (value) => patch(paths.finance, value),
-  getTransactionById: (txId) => read(`${paths.financeTransactions}/${txId}`),
-  updateTransactionById: (txId, value) => patch(`${paths.financeTransactions}/${txId}`, value),
-  deleteTransactionById: (txId) => destroy(`${paths.financeTransactions}/${txId}`)
+  addTransaction: (tx) => create(PATHS.financeTransactions, tx),
+  subscribeTransactions: (callback) => subscribe(PATHS.financeTransactions, callback),
+  patchFinance: (value) => patch(PATHS.finance, value),
+  getTransactionById: (txId) => read(`${PATHS.financeTransactions}/${txId}`),
+  updateTransactionById: (txId, value) => patch(`${PATHS.financeTransactions}/${txId}`, value),
+  deleteTransactionById: (txId) => destroy(`${PATHS.financeTransactions}/${txId}`)
 };
 
 export const dailyTasksApi = {
-  subscribe: (callback) => subscribe(paths.dailyTasks, callback),
-  getById: (taskId) => read(`${paths.dailyTasks}/${taskId}`),
-  patchById: (taskId, value) => patch(`${paths.dailyTasks}/${taskId}`, value)
+  subscribe: (callback) => subscribe(PATHS.dailyTasks, callback),
+  getById: (taskId) => read(`${PATHS.dailyTasks}/${taskId}`),
+  patchById: (taskId, value) => patch(`${PATHS.dailyTasks}/${taskId}`, value)
 };
 
 export const habitsApi = {
-  subscribe: (callback) => subscribe(paths.habits, callback),
-  getById: (habitId) => read(`${paths.habits}/${habitId}`),
-  patchById: (habitId, value) => patch(`${paths.habits}/${habitId}`, value)
+  subscribe: (callback) => subscribe(PATHS.habits, callback),
+  getById: (habitId) => read(`${PATHS.habits}/${habitId}`),
+  patchById: (habitId, value) => patch(`${PATHS.habits}/${habitId}`, value)
 };
 
 export const focusApi = {
-  getSessionState: () => read(paths.focusSessionState),
-  setSessionState: (state) => write(paths.focusSessionState, state),
-  clearSessionState: () => write(paths.focusSessionState, null),
-  addSession: (session) => create(paths.focusSessions, session),
-  subscribeSessions: (callback) => subscribe(paths.focusSessions, callback),
-  getSessionById: (sessionId) => read(`${paths.focusSessions}/${sessionId}`),
-  updateSessionById: (sessionId, value) => patch(`${paths.focusSessions}/${sessionId}`, value),
-  deleteSessionById: (sessionId) => destroy(`${paths.focusSessions}/${sessionId}`)
+  getSessionState: () => read(PATHS.focusSessionState),
+  setSessionState: (state) => write(PATHS.focusSessionState, state),
+  clearSessionState: () => write(PATHS.focusSessionState, null),
+  addSession: (session) => create(PATHS.focusSessions, session),
+  subscribeSessions: (callback) => subscribe(PATHS.focusSessions, callback),
+  getSessionById: (sessionId) => read(`${PATHS.focusSessions}/${sessionId}`),
+  updateSessionById: (sessionId, value) => patch(`${PATHS.focusSessions}/${sessionId}`, value),
+  deleteSessionById: (sessionId) => destroy(`${PATHS.focusSessions}/${sessionId}`)
 };
 
 export const activityApi = {
-  addEntry: (entry) => create(paths.activityLog, entry),
-  subscribe: (callback) => subscribe(paths.activityLog, callback)
+  addEntry: (entry) => create(PATHS.activityLog, entry),
+  subscribe: (callback) => subscribe(PATHS.activityLog, callback)
 };

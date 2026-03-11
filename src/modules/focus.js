@@ -1,5 +1,10 @@
-import { focusApi } from "../core/firebase.js";
-import { applyReward } from "../core/rewardEngine.js";
+import {
+  startFocusSession,
+  finalizeFocusSession,
+  subscribeFocusSessions,
+  getFocusSessionState,
+  deleteFocusSession as removeFocusSession
+} from "../services/focusService.js";
 
 function buildActions(actions) {
   const wrap = document.createElement("div");
@@ -29,8 +34,7 @@ export function initFocus(elements, notifyError) {
 
   async function finalizeSession(status) {
     if (!activeSessionId) return;
-    await focusApi.updateSessionById(activeSessionId, { status, endedAt: Date.now() });
-    await focusApi.clearSessionState();
+    await finalizeFocusSession(activeSessionId, status);
     activeSessionId = null;
     activeSessionStart = null;
     activeSessionDuration = null;
@@ -50,7 +54,6 @@ export function initFocus(elements, notifyError) {
         focusInterval = null;
         try {
           await finalizeSession("completed");
-          await applyReward({ foc: 5, exp: 10 }, { source: "Focus Session" });
         } catch (error) {
           notifyError(error, "Failed to finalize focus session");
         }
@@ -66,25 +69,10 @@ export function initFocus(elements, notifyError) {
     if (activeSessionId) return alert("A focus session is already active.");
 
     try {
-      const now = Date.now();
-      const sessionRef = await focusApi.addSession({
-        startTime: now,
-        duration: minutes,
-        status: "active",
-        endedAt: null,
-        createdAt: now
-      });
-
-      activeSessionId = sessionRef.key;
-      activeSessionStart = now;
-      activeSessionDuration = minutes;
-
-      await focusApi.setSessionState({
-        focusSessionActive: true,
-        sessionId: activeSessionId,
-        startTime: activeSessionStart,
-        duration: activeSessionDuration
-      });
+      const session = await startFocusSession(minutes);
+      activeSessionId = session.sessionId;
+      activeSessionStart = session.startTime;
+      activeSessionDuration = session.duration;
 
       startFocusTimer(activeSessionStart, activeSessionDuration);
     } catch (error) {
@@ -111,7 +99,7 @@ export function initFocus(elements, notifyError) {
       if (sessionId === activeSessionId) {
         await cancelActiveFocusSession();
       }
-      await focusApi.deleteSessionById(sessionId);
+      await removeFocusSession(sessionId);
     } catch (error) {
       notifyError(error, "Failed to delete focus session");
     }
@@ -119,7 +107,7 @@ export function initFocus(elements, notifyError) {
 
   async function restoreFocusSessionIfAny() {
     try {
-      const state = await focusApi.getSessionState();
+      const state = await getFocusSessionState();
       if (!state || !state.focusSessionActive) return;
       activeSessionId = state.sessionId;
       activeSessionStart = state.startTime;
@@ -135,7 +123,7 @@ export function initFocus(elements, notifyError) {
     button.addEventListener("click", () => beginFocusSession(Number(button.dataset.duration)));
   });
 
-  const unsubscribe = focusApi.subscribeSessions((sessions) => {
+  const unsubscribe = subscribeFocusSessions((sessions) => {
     elements.focusSessionList.innerHTML = "";
     if (!sessions) return;
 
