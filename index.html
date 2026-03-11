@@ -1,77 +1,220 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-<meta charset="UTF-8">
-<title>My Notes</title>
+  <meta charset="UTF-8">
+  <title>Life RPG Dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<style>
-body{
-font-family:Arial;
-padding:20px;
-}
-
-textarea{
-width:100%;
-height:200px;
-font-size:16px;
-}
-</style>
-
+  <link rel="stylesheet" href="style.css">
 </head>
 
 <body>
 
-<h2>Note</h2>
-<textarea id="note"></textarea>
+  <div class="dashboard">
 
-<script type="module">
+    <!-- ===================== -->
+    <!-- STATS -->
+    <!-- ===================== -->
+    <section class="card stats">
 
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js"
-import { getDatabase, ref, onValue, set } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js"
+      <h2>Character Stats</h2>
 
-const firebaseConfig = {
-  apiKey: "AIzaSyAPHwqlZhzpE_fR3d5LuOpmTJQoxmMC-nM",
-  authDomain: "database-tracking-29f0a.firebaseapp.com",
-  databaseURL: "https://database-tracking-29f0a-default-rtdb.firebaseio.com",
-  projectId: "database-tracking-29f0a",
-  storageBucket: "database-tracking-29f0a.firebasestorage.app",
-  messagingSenderId: "360569185652",
-  appId: "1:360569185652:web:e4578b58055a72ee68f821"
-};
+      <div class="stats-grid">
 
-const app = initializeApp(firebaseConfig)
-const db = getDatabase(app)
+        <div class="stat">
+          <span>ATK</span>
+          <strong id="atk">0</strong>
+        </div>
 
-const noteRef = ref(db,"note")
+        <div class="stat">
+          <span>INT</span>
+          <strong id="int">0</strong>
+        </div>
 
-onValue(noteRef,(snapshot)=>{
-document.getElementById("note").value = snapshot.val() || ""
-})
+        <div class="stat">
+          <span>DISC</span>
+          <strong id="disc">0</strong>
+        </div>
 
-document.getElementById("note").addEventListener("input",(e)=>{
-set(noteRef,e.target.value)
-})
+        <div class="stat">
+          <span>CRE</span>
+          <strong id="cre">0</strong>
+        </div>
 
-let timer
+        <div class="stat">
+          <span>END</span>
+          <strong id="end">0</strong>
+        </div>
 
-document.getElementById("note").addEventListener("input",(e)=>{
+        <div class="stat">
+          <span>FOC</span>
+          <strong id="foc">0</strong>
+        </div>
 
-clearTimeout(timer)
+        <div class="stat">
+          <span>WIS</span>
+          <strong id="wis">0</strong>
+        </div>
 
-localStorage.setItem("note",e.target.value)
+      </div>
 
-timer=setTimeout(()=>{
-set(noteRef,e.target.value)
-},500)
+      <div class="level-box">
 
-})
+        <div>
+          Level: <strong id="level">1</strong>
+        </div>
 
-const cached = localStorage.getItem("note")
-if(cached){
-note.value = cached
-}
+        <div>
+          EXP: <strong id="exp">0</strong>
+        </div>
 
-</script>
+      </div>
+
+    </section>
+
+
+    <!-- ===================== -->
+    <!-- DAILY TASKS -->
+    <!-- ===================== -->
+    <section class="card daily">
+
+      <h2>Daily Tasks</h2>
+
+      <ul id="dailyTaskList">
+      </ul>
+
+    </section>
+
+
+    <!-- ===================== -->
+    <!-- TASKS -->
+    <!-- ===================== -->
+    <section class="card tasks">
+
+      <h2>Tasks</h2>
+
+      <div class="task-input">
+
+        <input
+          type="text"
+          id="taskInput"
+          placeholder="Add new task..."
+        >
+
+        <button id="addTaskBtn">
+          Add
+        </button>
+
+      </div>
+
+      <ul id="taskList">
+      </ul>
+
+    </section>
+
+
+    <!-- ===================== -->
+    <!-- HABITS -->
+    <!-- ===================== -->
+    <section class="card habits">
+
+      <h2>Habits</h2>
+
+      <ul id="habitList">
+      </ul>
+
+    </section>
+
+
+    <!-- ===================== -->
+    <!-- FOCUS -->
+    <!-- ===================== -->
+    <section class="card focus">
+
+      <h2>Focus Session</h2>
+
+      <div class="focus-controls">
+
+        <button data-duration="90">
+          Start 90 min
+        </button>
+
+        <button data-duration="120">
+          Start 120 min
+        </button>
+
+      </div>
+
+      <div class="focus-timer" id="focusTimer">
+        00:00
+      </div>
+
+    </section>
+
+
+    <!-- ===================== -->
+    <!-- NOTES -->
+    <!-- ===================== -->
+    <section class="card notes">
+
+      <h2>Notes</h2>
+
+      <textarea
+        id="noteInput"
+        placeholder="Write quick note..."
+      ></textarea>
+
+      <button id="saveNoteBtn">
+        Save
+      </button>
+
+      <ul id="notesList">
+      </ul>
+
+    </section>
+
+
+    <!-- ===================== -->
+    <!-- FINANCE -->
+    <!-- ===================== -->
+    <section class="card finance">
+
+      <h2>Finance</h2>
+
+      <div class="balance">
+        Balance:
+        <strong id="balance">0</strong>
+      </div>
+
+      <div class="finance-input">
+
+        <input
+          type="number"
+          id="amountInput"
+          placeholder="Amount"
+        >
+
+        <select id="typeInput">
+          <option value="income">Income</option>
+          <option value="expense">Expense</option>
+        </select>
+
+        <button id="addTransactionBtn">
+          Add
+        </button>
+
+      </div>
+
+      <ul id="transactionList">
+      </ul>
+
+    </section>
+
+
+  </div>
+
+  <script type="module" src="scripts.js"></script>
 
 </body>
 </html>
+```
