@@ -1,5 +1,5 @@
-import { notesApi } from "./firebase.js";
-import { createNote, updateNote, deleteNote } from "./services/noteService.js";
+import { notesApi } from "../core/firebase.js";
+import { createNote, updateNote, deleteNote } from "../services/noteService.js";
 
 function buildActions(actions) {
   const wrap = document.createElement("div");

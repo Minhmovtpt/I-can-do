@@ -1,10 +1,10 @@
-import { activityApi } from "./firebase.js";
-import { initStats } from "./stats.js";
-import { initTasks } from "./tasks.js";
-import { initHabits } from "./habits.js";
-import { initNotes } from "./notes.js";
-import { initFinance } from "./finance.js";
-import { initFocus } from "./focus.js";
+import { activityApi } from "../core/firebase.js";
+import { initStats } from "../modules/stats.js";
+import { initTasks } from "../modules/tasks.js";
+import { initHabits } from "../modules/habits.js";
+import { initNotes } from "../modules/notes.js";
+import { initFinance } from "../modules/finance.js";
+import { initFocus } from "../modules/focus.js";
 
 const elements = {
   atk: document.getElementById("atk"),

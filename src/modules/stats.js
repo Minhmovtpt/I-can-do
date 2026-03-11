@@ -1,4 +1,4 @@
-import { getPaths, subscribe } from "./firebase.js";
+import { getPaths, subscribe } from "../core/firebase.js";
 
 function renderStatBar(elements, statKey, value) {
   const percent = Math.min(100, Math.round((Math.max(0, value) / 100) * 100));

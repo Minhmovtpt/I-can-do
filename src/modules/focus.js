@@ -1,5 +1,5 @@
-import { focusApi } from "./firebase.js";
-import { applyReward } from "./rewardEngine.js";
+import { focusApi } from "../core/firebase.js";
+import { applyReward } from "../core/rewardEngine.js";
 
 function buildActions(actions) {
   const wrap = document.createElement("div");

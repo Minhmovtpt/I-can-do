@@ -1,11 +1,11 @@
-import { financeApi } from "./firebase.js";
+import { financeApi } from "../core/firebase.js";
 import {
   createTransaction,
   updateTransaction,
   deleteTransaction,
-  calculateBalance,
   syncBalance
-} from "./services/financeService.js";
+} from "../services/financeService.js";
+import { calculateBalance } from "../core/financeLogic.js";
 
 function buildActions(actions) {
   const wrap = document.createElement("div");
