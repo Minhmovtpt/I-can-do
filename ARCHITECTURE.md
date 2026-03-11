@@ -1,33 +1,79 @@
-# Architecture Overview
+Architecture Analysis
+This repository is a frontend-only, modular dashboard app built around a Realtime Firebase backend. It follows a layered structure:
 
-## Directory layout
+UI composition/root
 
-- `public/`
-  - `index.html`: static entry page for browser and GitHub Pages deployment.
-  - `style.css`: dashboard styles.
-- `src/`
-  - `ui/ui.js`: composition root that wires DOM elements to feature initializers.
-  - `modules/`: UI feature modules (`stats`, `tasks`, `notes`, `finance`, `focus`, `habits`).
-  - `services/`: validation-backed data mutation services.
-  - `core/`: shared infrastructure and domain logic (`firebase`, `firebaseService`, rewards, validation, finance math).
-- `tests/`
-  - `reward.test.js`
-  - `finance.test.js`
-- `config/`
-  - `vite.config.js`
-  - `eslint.config.js`
-  - `Backend-read.json`
+Feature modules
 
-## Runtime flow
+Service layer (validated mutations)
 
-1. `public/index.html` loads `../src/ui/ui.js` as the module entry point.
-2. `src/ui/ui.js` initializes all feature modules on page load.
-3. Feature modules subscribe to Firebase realtime listeners through `src/core/firebase.js`.
-4. Services in `src/services/` perform validated writes and updates.
-5. Shared domain logic in `src/core/` computes rewards, level-ups, and finance balance.
+Core infrastructure/domain logic
 
-## Firebase ownership model
+Minimal unit tests for pure logic
 
-- Firebase is initialized in exactly one place: `src/core/firebaseService.js`.
-- `src/core/firebase.js` is a thin re-export facade used by UI modules.
-- All listeners (`stats`, `dailyTasks`, `tasks`, `habits`, `notes`, `finance/transactions`, `focus/sessions`, `activityLog`) are registered by module initializers called from `ui.js`.
+At runtime, index.html loads one JS entrypoint (src/ui/ui.js), which wires all feature modules and shared DOM references. The feature modules then subscribe to Firebase data and render/react to updates. Writes are mostly routed through services that enforce validation before persisting. rewardEngine/rewardLogic and financeLogic are the core domain engines.
+
+High-Level Structure
+Entry/UI shell:
+
+index.html defines all dashboard sections (stats, tasks, habits, focus, notes, finance, activity log) and imports src/ui/ui.js.
+
+Composition root:
+
+src/ui/ui.js collects DOM elements and initializes every feature module (stats, tasks, habits, notes, finance, focus) plus activity log subscription.
+
+Feature modules (src/modules):
+
+Handle rendering + event handlers + subscriptions for each domain area (tasks, notes, habits, focus, finance, stats).
+
+Service layer (src/services):
+
+Encapsulates writes and validation for tasks/notes/finance before calling Firebase APIs.
+
+Core (src/core):
+
+Firebase setup and APIs (firebaseService.js), facade export (firebase.js), reward math/leveling (rewardLogic.js, rewardEngine.js), finance math, and generic validation utilities.
+
+Tests:
+
+Node test runner verifies pure business logic (reward and finance calculations).
+
+Runtime Flow (Request/Update Lifecycle)
+Read path (reactive)
+Modules subscribe to Firebase via APIs in firebaseService.js (through core/firebase.js facade).
+
+subscribe() uses onValue and tracks active handlers in a map, allowing listener replacement and cleanup per path.
+
+Write path (validated)
+UI actions call service methods (e.g., create task/transaction/note).
+
+Services validate input (requireNonEmptyText, requireAmount, requireEnum) and format payloads/timestamps.
+
+Services call specific Firebase API methods (add/update/delete).
+
+Reward path
+Features like tasks/habits/focus call applyReward.
+
+rewardEngine computes normalized reward locally, applies atomic stats transaction in Firebase, then writes activity log entries for each non-zero reward field.
+
+Layer Responsibilities
+UI modules: DOM operations, prompt/alert UX, attach handlers, render lists.
+
+Services: contract enforcement and payload shaping.
+
+Core Firebase: persistence API abstraction and path ownership.
+
+Domain logic: deterministic, testable pure functions (rewardLogic, financeLogic).
+
+This is a clean separation for a small app: impure side effects (DOM/Firebase IO) live in modules/services, while calculations are isolated and unit-tested.
+
+Notable Architectural Characteristics
+Single Firebase initialization point in firebaseService.js and a thin re-export facade in firebase.js, reducing direct dependency spread.
+
+Feature-isolated modules with similar internal patterns (buildActions, subscribe+render).
+
+Realtime-first design: UI mirrors backend state continuously through listeners.
+
+State restoration for long-running focus session via persisted focus/sessionState.
+
+Potential coupling issue: UI modules sometimes directly use core Firebase APIs and sometimes services; consistency could be improved by routing all writes through services for stricter boundaries.
