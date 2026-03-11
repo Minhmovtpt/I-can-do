@@ -1,6 +1,5 @@
-import { dailyTasksApi, tasksApi } from "../core/firebase.js";
-import { applyReward } from "../core/rewardEngine.js";
-import { createTask, updateTask, deleteTask, completeTask as markTaskComplete } from "../services/taskService.js";
+import { completeDailyTask, subscribeDailyTasks } from "../services/dailyTaskService.js";
+import { createTask, updateTask, deleteTask, completeTask as markTaskComplete, subscribeTasks } from "../services/taskService.js";
 
 function buildActions(actions) {
   const wrap = document.createElement("div");
@@ -16,19 +15,6 @@ function buildActions(actions) {
 }
 
 export function initTasks(elements, notifyError) {
-  async function completeDailyTask(taskId) {
-    try {
-      const task = await dailyTasksApi.getById(taskId);
-      if (!task) return;
-      const today = new Date().toDateString();
-      if (task.lastCompleted === today) return alert("Already completed today");
-      await applyReward(task.reward || {}, { source: task.title || "Daily Task" });
-      await dailyTasksApi.patchById(taskId, { lastCompleted: today });
-    } catch (error) {
-      notifyError(error, "Failed to complete daily task");
-    }
-  }
-
   async function addTask() {
     try {
       await createTask({
@@ -61,15 +47,14 @@ export function initTasks(elements, notifyError) {
   async function completeTask(taskId, task) {
     if (task.completed) return;
     try {
-      await applyReward(task.reward || { exp: 20 }, { source: task.title || "Task" });
-      await markTaskComplete(taskId);
+      await markTaskComplete(taskId, task);
     } catch (error) {
       notifyError(error, "Failed to complete task");
     }
   }
 
   function loadDailyTasks() {
-    return dailyTasksApi.subscribe((tasks) => {
+    return subscribeDailyTasks((tasks) => {
       elements.dailyTaskList.innerHTML = "";
       if (!tasks) return;
       Object.entries(tasks).forEach(([id, task]) => {
@@ -77,14 +62,16 @@ export function initTasks(elements, notifyError) {
         const title = document.createElement("span");
         title.textContent = task.title;
         li.appendChild(title);
-        li.appendChild(buildActions([{ label: "Complete", onClick: () => completeDailyTask(id) }]));
+        li.appendChild(
+          buildActions([{ label: "Complete", onClick: () => completeDailyTask(id).catch((e) => notifyError(e, "Failed to complete daily task")) }])
+        );
         elements.dailyTaskList.appendChild(li);
       });
     });
   }
 
   function loadTasks() {
-    return tasksApi.subscribe((tasks) => {
+    return subscribeTasks((tasks) => {
       elements.taskList.innerHTML = "";
       if (!tasks) return;
 

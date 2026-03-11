@@ -1,5 +1,6 @@
 import { tasksApi } from "../core/firebaseService.js";
 import { requireNonEmptyText } from "../core/validation.js";
+import { recordTaskCompletion } from "./progressService.js";
 
 function formatTaskPayload({ title, description = "" }) {
   return {
@@ -30,10 +31,15 @@ export async function updateTask(taskId, updates = {}) {
   return tasksApi.updateById(taskId, payload);
 }
 
-export async function completeTask(taskId) {
-  return tasksApi.updateById(taskId, { completed: true, completedAt: Date.now() });
+export async function completeTask(taskId, task = null) {
+  await tasksApi.updateById(taskId, { completed: true, completedAt: Date.now() });
+  recordTaskCompletion(task || {});
 }
 
 export async function deleteTask(taskId) {
   return tasksApi.deleteById(taskId);
+}
+
+export function subscribeTasks(callback) {
+  return tasksApi.subscribe(callback);
 }

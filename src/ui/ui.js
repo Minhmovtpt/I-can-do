@@ -1,4 +1,5 @@
 import { activityApi } from "../core/firebase.js";
+import { initRewardEngine } from "../core/rewardEngine.js";
 import { initStats } from "../modules/stats.js";
 import { initTasks } from "../modules/tasks.js";
 import { initHabits } from "../modules/habits.js";
@@ -69,6 +70,7 @@ function initActivityLog() {
 }
 
 function init() {
+  initRewardEngine({ notifyError });
   initStats(elements);
   initTasks(elements, notifyError);
   initHabits(elements, notifyError);
