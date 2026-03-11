@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>My Notes</title>
+
+<style>
+body{
+font-family:Arial;
+padding:20px;
+}
+
+textarea{
+width:100%;
+height:200px;
+font-size:16px;
+}
+</style>
+
+</head>
+
+<body>
+
+<h2>Note</h2>
+<textarea id="note"></textarea>
+
+<script type="module">
+
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js"
+import { getDatabase, ref, onValue, set } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js"
+
+const firebaseConfig = {
+  apiKey: "AIzaSyAPHwqlZhzpE_fR3d5LuOpmTJQoxmMC-nM",
+  authDomain: "database-tracking-29f0a.firebaseapp.com",
+  databaseURL: "https://database-tracking-29f0a-default-rtdb.firebaseio.com",
+  projectId: "database-tracking-29f0a",
+  storageBucket: "database-tracking-29f0a.firebasestorage.app",
+  messagingSenderId: "360569185652",
+  appId: "1:360569185652:web:e4578b58055a72ee68f821"
+};
+
+const app = initializeApp(firebaseConfig)
+const db = getDatabase(app)
+
+const noteRef = ref(db,"note")
+
+onValue(noteRef,(snapshot)=>{
+document.getElementById("note").value = snapshot.val() || ""
+})
+
+document.getElementById("note").addEventListener("input",(e)=>{
+set(noteRef,e.target.value)
+})
+
+let timer
+
+document.getElementById("note").addEventListener("input",(e)=>{
+
+clearTimeout(timer)
+
+localStorage.setItem("note",e.target.value)
+
+timer=setTimeout(()=>{
+set(noteRef,e.target.value)
+},500)
+
+})
+
+const cached = localStorage.getItem("note")
+if(cached){
+note.value = cached
+}
+
+</script>
+
+</body>
+</html>
