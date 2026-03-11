@@ -1,23 +1,13 @@
-// =========================
-// FIREBASE IMPORT
-// =========================
-
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-
 import {
   getDatabase,
   ref,
   get,
-  set,
   update,
   push,
-  onValue
+  onValue,
+  set
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
-
-
-// =========================
-// FIREBASE CONFIG
-// =========================
 
 const firebaseConfig = {
   apiKey: "AIzaSyAPHwqlZhzpE_fR3d5LuOpmTJQoxmMC-nM",
@@ -29,354 +19,330 @@ const firebaseConfig = {
   appId: "1:360569185652:web:e4578b58055a72ee68f821"
 };
 
-
-// =========================
-// INIT FIREBASE
-// =========================
-
 const app = initializeApp(firebaseConfig);
-
 const db = getDatabase(app);
 
+const elements = {
+  atk: document.getElementById("atk"),
+  int: document.getElementById("int"),
+  disc: document.getElementById("disc"),
+  cre: document.getElementById("cre"),
+  end: document.getElementById("end"),
+  foc: document.getElementById("foc"),
+  wis: document.getElementById("wis"),
+  level: document.getElementById("level"),
+  exp: document.getElementById("exp"),
+  dailyTaskList: document.getElementById("dailyTaskList"),
+  taskInput: document.getElementById("taskInput"),
+  addTaskBtn: document.getElementById("addTaskBtn"),
+  taskList: document.getElementById("taskList"),
+  habitList: document.getElementById("habitList"),
+  focusTimer: document.getElementById("focusTimer"),
+  focusButtons: document.querySelectorAll(".focus-controls button"),
+  noteInput: document.getElementById("noteInput"),
+  saveNoteBtn: document.getElementById("saveNoteBtn"),
+  notesList: document.getElementById("notesList"),
+  amountInput: document.getElementById("amountInput"),
+  typeInput: document.getElementById("typeInput"),
+  addTransactionBtn: document.getElementById("addTransactionBtn"),
+  transactionList: document.getElementById("transactionList"),
+  balance: document.getElementById("balance")
+};
 
-// =========================
-// STATS REFERENCES
-// =========================
+const refs = {
+  stats: ref(db, "stats"),
+  dailyTasks: ref(db, "dailyTasks"),
+  tasks: ref(db, "tasks"),
+  habits: ref(db, "habits"),
+  focusSessions: ref(db, "focusSessions"),
+  notes: ref(db, "notes"),
+  finance: ref(db, "finance"),
+  financeTransactions: ref(db, "finance/transactions")
+};
 
-const statsRef = ref(db, "stats");
+let focusInterval = null;
+let activeFocusSessionRef = null;
 
-
-// =========================
-// LOAD STATS FROM DATABASE
-// =========================
-
-function loadStats() {
-
-  onValue(statsRef, (snapshot) => {
-
-    const stats = snapshot.val();
-
-    if (!stats) return;
-
-    document.getElementById("atk").textContent = stats.atk;
-    document.getElementById("int").textContent = stats.int;
-    document.getElementById("disc").textContent = stats.disc;
-    document.getElementById("cre").textContent = stats.cre;
-    document.getElementById("end").textContent = stats.end;
-    document.getElementById("foc").textContent = stats.foc;
-    document.getElementById("wis").textContent = stats.wis;
-
-    document.getElementById("level").textContent = stats.level;
-    document.getElementById("exp").textContent = stats.exp;
-
-  });
-
+function checkLevelUp(stats) {
+  while (stats.exp >= stats.level * 100) {
+    stats.exp -= stats.level * 100;
+    stats.level += 1;
+  }
 }
 
-
-// =========================
-// REWARD SYSTEM
-// =========================
-
-async function applyReward(reward) {
-
-  const snapshot = await get(statsRef);
-
-  const stats = snapshot.val();
+async function applyReward(reward = {}) {
+  const snapshot = await get(refs.stats);
+  const stats = snapshot.val() || {
+    atk: 0,
+    int: 0,
+    disc: 0,
+    cre: 0,
+    end: 0,
+    foc: 0,
+    wis: 0,
+    exp: 0,
+    level: 1
+  };
 
   const updatedStats = {
-
     atk: stats.atk + (reward.atk || 0),
-
     int: stats.int + (reward.int || 0),
-
     disc: stats.disc + (reward.disc || 0),
-
     cre: stats.cre + (reward.cre || 0),
-
     end: stats.end + (reward.end || 0),
-
     foc: stats.foc + (reward.foc || 0),
-
     wis: stats.wis + (reward.wis || 0),
-
     exp: stats.exp + (reward.exp || 0),
-
     level: stats.level
-
   };
 
   checkLevelUp(updatedStats);
-
-  update(statsRef, updatedStats);
-
+  await set(refs.stats, updatedStats);
 }
 
-
-// =========================
-// LEVEL SYSTEM
-// =========================
-
-function checkLevelUp(stats) {
-
-  while (stats.exp >= stats.level * 100) {
-
-    stats.exp -= stats.level * 100;
-
-    stats.level += 1;
-
-  }
-
+function renderStats(stats) {
+  if (!stats) return;
+  elements.atk.textContent = stats.atk ?? 0;
+  elements.int.textContent = stats.int ?? 0;
+  elements.disc.textContent = stats.disc ?? 0;
+  elements.cre.textContent = stats.cre ?? 0;
+  elements.end.textContent = stats.end ?? 0;
+  elements.foc.textContent = stats.foc ?? 0;
+  elements.wis.textContent = stats.wis ?? 0;
+  elements.level.textContent = stats.level ?? 1;
+  elements.exp.textContent = stats.exp ?? 0;
 }
 
-
-// =========================
-// DAILY TASK COMPLETE
-// =========================
+function loadStats() {
+  onValue(refs.stats, (snapshot) => renderStats(snapshot.val()));
+}
 
 async function completeDailyTask(taskId) {
-
-  const taskRef = ref(db, "dailyTasks/" + taskId);
-
+  const taskRef = ref(db, `dailyTasks/${taskId}`);
   const snapshot = await get(taskRef);
-
   const task = snapshot.val();
+  if (!task) return;
 
   const today = new Date().toDateString();
-
   if (task.lastCompleted === today) {
-
     alert("Already completed today");
-
     return;
-
   }
 
-  await applyReward(task.reward);
-
-  update(taskRef, {
-
-    lastCompleted: today
-
-  });
-
+  await applyReward(task.reward || {});
+  await update(taskRef, { lastCompleted: today });
 }
-
-
-// =========================
-// LOAD DAILY TASKS
-// =========================
 
 function loadDailyTasks() {
-
-  const dailyRef = ref(db, "dailyTasks");
-
-  const list = document.getElementById("dailyTaskList");
-
-  onValue(dailyRef, (snapshot) => {
-
-    list.innerHTML = "";
-
+  onValue(refs.dailyTasks, (snapshot) => {
     const tasks = snapshot.val();
+    elements.dailyTaskList.innerHTML = "";
+    if (!tasks) return;
 
-    for (const id in tasks) {
-
-      const task = tasks[id];
-
+    Object.entries(tasks).forEach(([id, task]) => {
       const li = document.createElement("li");
-
       const button = document.createElement("button");
-
       button.textContent = task.title;
-
-      button.onclick = () => completeDailyTask(id);
-
+      button.addEventListener("click", () => completeDailyTask(id));
       li.appendChild(button);
-
-      list.appendChild(li);
-
-    }
-
+      elements.dailyTaskList.appendChild(li);
+    });
   });
-
 }
 
+function loadTasks() {
+  onValue(refs.tasks, (snapshot) => {
+    const tasks = snapshot.val();
+    elements.taskList.innerHTML = "";
+    if (!tasks) return;
 
-// =========================
-// INIT APP
-// =========================
-
-function init() {
-
-  loadStats();
-
-  loadDailyTasks();
-
-  loadTasks();
-
-  loadNotes();
-
+    Object.values(tasks).forEach((task) => {
+      const li = document.createElement("li");
+      li.textContent = task.title;
+      elements.taskList.appendChild(li);
+    });
+  });
 }
 
-init();
-
-
-const taskInput = document.getElementById("taskInput");
-const addTaskBtn = document.getElementById("addTaskBtn");
-const taskList = document.getElementById("taskList");
-
-const tasksRef = ref(db, "tasks");
-
-addTaskBtn.onclick = async () => {
-
-  const title = taskInput.value.trim();
-
+async function addTask() {
+  const title = elements.taskInput.value.trim();
   if (!title) return;
 
-  const newTask = {
-    title: title,
+  await push(refs.tasks, {
+    title,
     description: "",
     completed: false,
     reward: { exp: 20 },
     createdAt: Date.now()
-  };
-
-  await push(tasksRef, newTask);
-
-  taskInput.value = "";
-
-};
-
-function loadTasks(){
-
-  onValue(tasksRef, (snapshot)=>{
-
-    taskList.innerHTML="";
-
-    const tasks = snapshot.val();
-    if(!tasks) return;
-
-    for(const id in tasks){
-
-      const task = tasks[id];
-
-      const li = document.createElement("li");
-      li.textContent = task.title;
-
-      taskList.appendChild(li);
-
-    }
-
   });
 
+  elements.taskInput.value = "";
 }
 
-const focusTimer = document.getElementById("focusTimer");
-const focusButtons = document.querySelectorAll(".focus-controls button");
+function loadHabits() {
+  onValue(refs.habits, (snapshot) => {
+    const habits = snapshot.val();
+    elements.habitList.innerHTML = "";
+    if (!habits) return;
 
-focusButtons.forEach(btn => {
+    Object.entries(habits).forEach(([id, habit]) => {
+      const li = document.createElement("li");
+      const button = document.createElement("button");
+      button.textContent = `${habit.title} (streak: ${habit.streak || 0})`;
+      button.addEventListener("click", () => completeHabit(id, habit));
+      li.appendChild(button);
+      elements.habitList.appendChild(li);
+    });
+  });
+}
 
-  btn.onclick = () => startFocus(parseInt(btn.dataset.duration));
+async function completeHabit(habitId, habit) {
+  const today = new Date().toDateString();
+  if (habit.lastCompleted === today) {
+    alert("Habit already completed today");
+    return;
+  }
 
-});
+  const habitRef = ref(db, `habits/${habitId}`);
+  await applyReward(habit.reward || {});
+  await update(habitRef, {
+    lastCompleted: today,
+    streak: (habit.streak || 0) + 1
+  });
+}
 
-function startFocus(minutes){
+function startFocus(minutes) {
+  if (focusInterval) {
+    clearInterval(focusInterval);
+    focusInterval = null;
+  }
 
   let seconds = minutes * 60;
+  const reward = { foc: 5, exp: 10 };
+  const now = Date.now();
+  activeFocusSessionRef = push(refs.focusSessions);
 
-  const interval = setInterval(()=>{
-
-    seconds--;
-
-    const m = Math.floor(seconds/60);
-    const s = seconds % 60;
-
-    focusTimer.textContent =
-      String(m).padStart(2,"0") + ":" +
-      String(s).padStart(2,"0");
-
-    if(seconds <= 0){
-
-      clearInterval(interval);
-
-      applyReward({ foc:5, exp:10 });
-
-    }
-
-  },1000);
-
-}
-
-
-const noteInput = document.getElementById("noteInput");
-const saveNoteBtn = document.getElementById("saveNoteBtn");
-const notesList = document.getElementById("notesList");
-
-const notesRef = ref(db,"notes");
-
-saveNoteBtn.onclick = async ()=>{
-
-  const content = noteInput.value.trim();
-  if(!content) return;
-
-  const note = {
-    content: content,
-    date: Date.now()
-  };
-
-  await push(notesRef,note);
-
-  noteInput.value="";
-
-};
-
-function loadNotes(){
-
-  onValue(notesRef,(snapshot)=>{
-
-    notesList.innerHTML="";
-
-    const notes = snapshot.val();
-    if(!notes) return;
-
-    for(const id in notes){
-
-      const note = notes[id];
-
-      const li = document.createElement("li");
-      li.textContent = note.content;
-
-      notesList.appendChild(li);
-
-    }
-
+  set(activeFocusSessionRef, {
+    durationMinutes: minutes,
+    startedAt: now,
+    endedAt: null,
+    completed: false,
+    reward
   });
 
+  updateTimerDisplay(seconds);
+
+  focusInterval = setInterval(async () => {
+    seconds -= 1;
+    updateTimerDisplay(seconds);
+
+    if (seconds <= 0) {
+      clearInterval(focusInterval);
+      focusInterval = null;
+      await applyReward(reward);
+
+      if (activeFocusSessionRef) {
+        await update(activeFocusSessionRef, {
+          endedAt: Date.now(),
+          completed: true
+        });
+      }
+    }
+  }, 1000);
 }
 
-const amountInput = document.getElementById("amountInput");
-const typeInput = document.getElementById("typeInput");
-const addTransactionBtn = document.getElementById("addTransactionBtn");
-const transactionList = document.getElementById("transactionList");
+function updateTimerDisplay(seconds) {
+  const safeSeconds = Math.max(0, seconds);
+  const m = Math.floor(safeSeconds / 60);
+  const s = safeSeconds % 60;
+  elements.focusTimer.textContent = `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+}
 
-const financeRef = ref(db,"finance/transactions");
+function loadNotes() {
+  onValue(refs.notes, (snapshot) => {
+    const notes = snapshot.val();
+    elements.notesList.innerHTML = "";
+    if (!notes) return;
 
-addTransactionBtn.onclick = async ()=>{
+    Object.values(notes)
+      .sort((a, b) => (b.date || 0) - (a.date || 0))
+      .forEach((note) => {
+        const li = document.createElement("li");
+        li.textContent = note.content;
+        elements.notesList.appendChild(li);
+      });
+  });
+}
 
-  const amount = Number(amountInput.value);
+async function saveNote() {
+  const content = elements.noteInput.value.trim();
+  if (!content) return;
 
-  if(!amount) return;
-
-  const transaction = {
-
-    amount: amount,
-    type: typeInput.value,
+  await push(refs.notes, {
+    content,
     date: Date.now()
+  });
 
-  };
+  elements.noteInput.value = "";
+}
 
-  await push(financeRef,transaction);
+function loadFinance() {
+  onValue(refs.financeTransactions, (snapshot) => {
+    const transactions = snapshot.val();
+    elements.transactionList.innerHTML = "";
 
-  amountInput.value="";
+    let balance = 0;
+    const items = transactions ? Object.values(transactions) : [];
 
-};
+    items
+      .sort((a, b) => (b.date || 0) - (a.date || 0))
+      .forEach((transaction) => {
+        const sign = transaction.type === "expense" ? -1 : 1;
+        balance += sign * Number(transaction.amount || 0);
+
+        const li = document.createElement("li");
+        li.textContent = `${transaction.type}: ${transaction.amount}`;
+        elements.transactionList.appendChild(li);
+      });
+
+    elements.balance.textContent = balance;
+    update(refs.finance, { balance });
+  });
+}
+
+async function addTransaction() {
+  const amount = Number(elements.amountInput.value);
+  if (!amount) return;
+
+  await push(refs.financeTransactions, {
+    amount,
+    type: elements.typeInput.value,
+    date: Date.now()
+  });
+
+  elements.amountInput.value = "";
+}
+
+function bindEvents() {
+  elements.addTaskBtn.addEventListener("click", addTask);
+  elements.saveNoteBtn.addEventListener("click", saveNote);
+  elements.addTransactionBtn.addEventListener("click", addTransaction);
+
+  elements.focusButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+      startFocus(Number(button.dataset.duration));
+    });
+  });
+}
+
+function init() {
+  bindEvents();
+  loadStats();
+  loadDailyTasks();
+  loadTasks();
+  loadHabits();
+  loadNotes();
+  loadFinance();
+}
+
+init();
