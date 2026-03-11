@@ -9,7 +9,7 @@ import {
   onValue,
   off,
   remove,
-  runTransaction
+  runTransaction,
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 import { PATHS } from "./schema.js";
 
@@ -20,7 +20,7 @@ const firebaseConfig = {
   projectId: "database-tracking-29f0a",
   storageBucket: "database-tracking-29f0a.firebasestorage.app",
   messagingSenderId: "360569185652",
-  appId: "1:360569185652:web:e4578b58055a72ee68f821"
+  appId: "1:360569185652:web:e4578b58055a72ee68f821",
 };
 
 const app = initializeApp(firebaseConfig);
@@ -92,7 +92,7 @@ export function getPaths() {
 export const statsApi = {
   get: () => read(PATHS.stats),
   set: (stats) => write(PATHS.stats, stats),
-  transact: (updater) => transaction(PATHS.stats, updater)
+  transact: (updater) => transaction(PATHS.stats, updater),
 };
 
 export const tasksApi = {
@@ -100,7 +100,7 @@ export const tasksApi = {
   subscribe: (callback) => subscribe(PATHS.tasks, callback),
   getById: (taskId) => read(`${PATHS.tasks}/${taskId}`),
   updateById: (taskId, value) => patch(`${PATHS.tasks}/${taskId}`, value),
-  deleteById: (taskId) => destroy(`${PATHS.tasks}/${taskId}`)
+  deleteById: (taskId) => destroy(`${PATHS.tasks}/${taskId}`),
 };
 
 export const notesApi = {
@@ -108,7 +108,7 @@ export const notesApi = {
   subscribe: (callback) => subscribe(PATHS.notes, callback),
   getById: (noteId) => read(`${PATHS.notes}/${noteId}`),
   updateById: (noteId, value) => patch(`${PATHS.notes}/${noteId}`, value),
-  deleteById: (noteId) => destroy(`${PATHS.notes}/${noteId}`)
+  deleteById: (noteId) => destroy(`${PATHS.notes}/${noteId}`),
 };
 
 export const financeApi = {
@@ -117,19 +117,19 @@ export const financeApi = {
   patchFinance: (value) => patch(PATHS.finance, value),
   getTransactionById: (txId) => read(`${PATHS.financeTransactions}/${txId}`),
   updateTransactionById: (txId, value) => patch(`${PATHS.financeTransactions}/${txId}`, value),
-  deleteTransactionById: (txId) => destroy(`${PATHS.financeTransactions}/${txId}`)
+  deleteTransactionById: (txId) => destroy(`${PATHS.financeTransactions}/${txId}`),
 };
 
 export const dailyTasksApi = {
   subscribe: (callback) => subscribe(PATHS.dailyTasks, callback),
   getById: (taskId) => read(`${PATHS.dailyTasks}/${taskId}`),
-  patchById: (taskId, value) => patch(`${PATHS.dailyTasks}/${taskId}`, value)
+  patchById: (taskId, value) => patch(`${PATHS.dailyTasks}/${taskId}`, value),
 };
 
 export const habitsApi = {
   subscribe: (callback) => subscribe(PATHS.habits, callback),
   getById: (habitId) => read(`${PATHS.habits}/${habitId}`),
-  patchById: (habitId, value) => patch(`${PATHS.habits}/${habitId}`, value)
+  patchById: (habitId, value) => patch(`${PATHS.habits}/${habitId}`, value),
 };
 
 export const focusApi = {
@@ -140,10 +140,18 @@ export const focusApi = {
   subscribeSessions: (callback) => subscribe(PATHS.focusSessions, callback),
   getSessionById: (sessionId) => read(`${PATHS.focusSessions}/${sessionId}`),
   updateSessionById: (sessionId, value) => patch(`${PATHS.focusSessions}/${sessionId}`, value),
-  deleteSessionById: (sessionId) => destroy(`${PATHS.focusSessions}/${sessionId}`)
+  deleteSessionById: (sessionId) => destroy(`${PATHS.focusSessions}/${sessionId}`),
 };
 
 export const activityApi = {
   addEntry: (entry) => create(PATHS.activityLog, entry),
-  subscribe: (callback) => subscribe(PATHS.activityLog, callback)
+  subscribe: (callback) => subscribe(PATHS.activityLog, callback),
+};
+
+export const calendarApi = {
+  addEvent: (event) => create(PATHS.calendarEvents, event),
+  subscribeEvents: (callback) => subscribe(PATHS.calendarEvents, callback),
+  getEventById: (eventId) => read(`${PATHS.calendarEvents}/${eventId}`),
+  updateEventById: (eventId, value) => patch(`${PATHS.calendarEvents}/${eventId}`, value),
+  deleteEventById: (eventId) => destroy(`${PATHS.calendarEvents}/${eventId}`),
 };

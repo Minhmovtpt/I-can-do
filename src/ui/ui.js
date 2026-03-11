@@ -6,6 +6,7 @@ import { initHabits } from "../modules/habits.js";
 import { initNotes } from "../modules/notes.js";
 import { initFinance } from "../modules/finance.js";
 import { initFocus } from "../modules/focus.js";
+import { initCalendar } from "../modules/calendar.js";
 
 const elements = {
   atk: document.getElementById("atk"),
@@ -24,7 +25,7 @@ const elements = {
     cre: document.getElementById("bar-cre"),
     end: document.getElementById("bar-end"),
     foc: document.getElementById("bar-foc"),
-    wis: document.getElementById("bar-wis")
+    wis: document.getElementById("bar-wis"),
   },
   dailyTaskList: document.getElementById("dailyTaskList"),
   taskInput: document.getElementById("taskInput"),
@@ -44,7 +45,20 @@ const elements = {
   addTransactionBtn: document.getElementById("addTransactionBtn"),
   transactionList: document.getElementById("transactionList"),
   balance: document.getElementById("balance"),
-  activityLogList: document.getElementById("activityLogList")
+  activityLogList: document.getElementById("activityLogList"),
+  calendarTitleInput: document.getElementById("calendarTitleInput"),
+  calendarStartInput: document.getElementById("calendarStartInput"),
+  calendarEndInput: document.getElementById("calendarEndInput"),
+  calendarNotesInput: document.getElementById("calendarNotesInput"),
+  calendarLinkTypeInput: document.getElementById("calendarLinkTypeInput"),
+  calendarLinkIdInput: document.getElementById("calendarLinkIdInput"),
+  addCalendarEventBtn: document.getElementById("addCalendarEventBtn"),
+  calendarPrevMonthBtn: document.getElementById("calendarPrevMonthBtn"),
+  calendarNextMonthBtn: document.getElementById("calendarNextMonthBtn"),
+  calendarTodayBtn: document.getElementById("calendarTodayBtn"),
+  calendarMonthLabel: document.getElementById("calendarMonthLabel"),
+  calendarWeekdays: document.getElementById("calendarWeekdays"),
+  calendarGrid: document.getElementById("calendarGrid"),
 };
 
 function notifyError(error, fallback = "Operation failed") {
@@ -63,7 +77,8 @@ function initActivityLog() {
       .slice(0, 20)
       .forEach((entry) => {
         const li = document.createElement("li");
-        li.textContent = entry.message || `+${entry.value} ${String(entry.stat || "").toUpperCase()}`;
+        li.textContent =
+          entry.message || `+${entry.value} ${String(entry.stat || "").toUpperCase()}`;
         elements.activityLogList.appendChild(li);
       });
   });
@@ -77,6 +92,7 @@ function init() {
   initNotes(elements, notifyError);
   initFinance(elements, notifyError);
   initFocus(elements, notifyError);
+  initCalendar(elements, notifyError);
   initActivityLog();
 }
 
