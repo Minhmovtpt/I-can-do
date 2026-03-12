@@ -3,17 +3,18 @@ import { requireAmount, requireEnum } from "../core/validation.js";
 
 import { calculateBalance } from "../core/financeLogic.js";
 
-export async function createTransaction({ amount, type }) {
+export async function createTransaction({ amount, type, recurringMonthly = false }) {
   return financeApi.addTransaction({
     amount: requireAmount(amount),
     type: requireEnum(type, ["income", "expense"], "Transaction type"),
-    date: Date.now()
+    recurringMonthly: Boolean(recurringMonthly),
+    date: Date.now(),
   });
 }
 
-export async function updateTransaction(txId, { amount, type }) {
+export async function updateTransaction(txId, { amount, type, recurringMonthly }) {
   const payload = {
-    date: Date.now()
+    date: Date.now(),
   };
 
   if (amount !== undefined) {
@@ -22,6 +23,10 @@ export async function updateTransaction(txId, { amount, type }) {
 
   if (type !== undefined) {
     payload.type = requireEnum(type, ["income", "expense"], "Transaction type");
+  }
+
+  if (recurringMonthly !== undefined) {
+    payload.recurringMonthly = Boolean(recurringMonthly);
   }
 
   return financeApi.updateTransactionById(txId, payload);

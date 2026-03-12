@@ -34,26 +34,37 @@ function pathRef(path) {
 
 export function subscribe(path, callback) {
   const targetRef = pathRef(path);
+  let listener = activeListeners.get(path);
 
-  if (activeListeners.has(path)) {
-    off(targetRef, "value", activeListeners.get(path));
+  if (!listener) {
+    listener = {
+      callbacks: new Set(),
+      handler: (snapshot) => {
+        const value = snapshot.val();
+        listener.callbacks.forEach((cb) => cb(value));
+      },
+    };
+
+    onValue(targetRef, listener.handler);
+    activeListeners.set(path, listener);
   }
 
-  const handler = (snapshot) => callback(snapshot.val());
-  onValue(targetRef, handler);
-  activeListeners.set(path, handler);
+  listener.callbacks.add(callback);
 
   return () => {
-    off(targetRef, "value", handler);
-    if (activeListeners.get(path) === handler) {
+    const current = activeListeners.get(path);
+    if (!current) return;
+    current.callbacks.delete(callback);
+    if (!current.callbacks.size) {
+      off(targetRef, "value", current.handler);
       activeListeners.delete(path);
     }
   };
 }
 
 export function unsubscribeAll() {
-  activeListeners.forEach((handler, path) => {
-    off(pathRef(path), "value", handler);
+  activeListeners.forEach((listener, path) => {
+    off(pathRef(path), "value", listener.handler);
   });
   activeListeners.clear();
 }
@@ -121,15 +132,19 @@ export const financeApi = {
 };
 
 export const dailyTasksApi = {
+  add: (task) => create(PATHS.dailyTasks, task),
   subscribe: (callback) => subscribe(PATHS.dailyTasks, callback),
   getById: (taskId) => read(`${PATHS.dailyTasks}/${taskId}`),
   patchById: (taskId, value) => patch(`${PATHS.dailyTasks}/${taskId}`, value),
+  deleteById: (taskId) => destroy(`${PATHS.dailyTasks}/${taskId}`),
 };
 
 export const habitsApi = {
+  add: (habit) => create(PATHS.habits, habit),
   subscribe: (callback) => subscribe(PATHS.habits, callback),
   getById: (habitId) => read(`${PATHS.habits}/${habitId}`),
   patchById: (habitId, value) => patch(`${PATHS.habits}/${habitId}`, value),
+  deleteById: (habitId) => destroy(`${PATHS.habits}/${habitId}`),
 };
 
 export const focusApi = {
