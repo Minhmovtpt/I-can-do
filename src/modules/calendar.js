@@ -24,15 +24,28 @@ function formatTimeRange(event) {
   return `${start.toLocaleTimeString([], options)}-${end.toLocaleTimeString([], options)}`;
 }
 
-function getMonthLabel(date) {
-  return date.toLocaleString([], { month: "long", year: "numeric" });
+function getMonthLabel(date, viewMode) {
+  return `${viewMode.toUpperCase()} • ${date.toLocaleString([], { month: "long", year: "numeric" })}`;
 }
 
 function toDayKey(date) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 }
 
-function getDaysGrid(viewDate) {
+function getDaysGrid(viewDate, viewMode) {
+  if (viewMode === "day")
+    return [new Date(viewDate.getFullYear(), viewDate.getMonth(), viewDate.getDate())];
+
+  if (viewMode === "week") {
+    const anchor = new Date(viewDate);
+    const sunday = new Date(anchor);
+    sunday.setDate(anchor.getDate() - anchor.getDay());
+    return Array.from(
+      { length: 7 },
+      (_, i) => new Date(sunday.getFullYear(), sunday.getMonth(), sunday.getDate() + i),
+    );
+  }
+
   const year = viewDate.getFullYear();
   const month = viewDate.getMonth();
   const firstDay = new Date(year, month, 1);
@@ -40,28 +53,19 @@ function getDaysGrid(viewDate) {
   const daysInMonth = lastDay.getDate();
 
   const cells = [];
-  const leading = firstDay.getDay();
-  for (let i = 0; i < leading; i += 1) {
-    cells.push(null);
-  }
-
-  for (let day = 1; day <= daysInMonth; day += 1) {
-    cells.push(new Date(year, month, day));
-  }
-
-  while (cells.length % 7 !== 0) {
-    cells.push(null);
-  }
-
+  for (let i = 0; i < firstDay.getDay(); i += 1) cells.push(null);
+  for (let day = 1; day <= daysInMonth; day += 1) cells.push(new Date(year, month, day));
+  while (cells.length % 7 !== 0) cells.push(null);
   return cells;
 }
 
 export function initCalendar(elements, notifyError) {
   let viewDate = new Date();
   let eventsById = {};
+  let viewMode = "month";
 
   function setMonthLabel() {
-    elements.calendarMonthLabel.textContent = getMonthLabel(viewDate);
+    elements.calendarMonthLabel.textContent = getMonthLabel(viewDate, viewMode);
   }
 
   async function handleCreateEvent() {
@@ -87,30 +91,19 @@ export function initCalendar(elements, notifyError) {
   async function handleEditEvent(eventId, event) {
     const title = prompt("Edit event title:", event.title || "");
     if (title === null) return;
-
     const startAt = prompt(
       "Edit start date/time (YYYY-MM-DDTHH:mm):",
       formatDateTimeValue(event.startAt),
     );
     if (startAt === null) return;
-
     const endAt = prompt(
       "Edit end date/time (YYYY-MM-DDTHH:mm):",
       formatDateTimeValue(event.endAt),
     );
     if (endAt === null) return;
 
-    const notes = prompt("Edit notes:", event.notes || "");
-    if (notes === null) return;
-
-    const linkType = prompt("Link type (task/focus or leave blank):", event.linkType || "");
-    if (linkType === null) return;
-
-    const linkId = prompt("Link id (optional):", event.linkId || "");
-    if (linkId === null) return;
-
     try {
-      await updateCalendarEvent(eventId, { title, startAt, endAt, notes, linkType, linkId });
+      await updateCalendarEvent(eventId, { title, startAt, endAt });
     } catch (error) {
       notifyError(error, "Failed to update event");
     }
@@ -119,32 +112,31 @@ export function initCalendar(elements, notifyError) {
   function render() {
     setMonthLabel();
     elements.calendarWeekdays.innerHTML = "";
-    WEEK_DAYS.forEach((day) => {
-      const header = document.createElement("div");
-      header.className = "calendar-weekday";
-      header.textContent = day;
-      elements.calendarWeekdays.appendChild(header);
-    });
 
-    const month = viewDate.getMonth();
-    const year = viewDate.getFullYear();
-    const monthEvents = Object.entries(eventsById || {})
-      .map(([id, event]) => ({ id, ...event }))
-      .filter((event) => {
-        const start = new Date(event.startAt || 0);
-        return start.getMonth() === month && start.getFullYear() === year;
-      })
-      .sort((a, b) => (a.startAt || 0) - (b.startAt || 0));
+    if (viewMode === "month" || viewMode === "week") {
+      WEEK_DAYS.forEach((day) => {
+        const header = document.createElement("div");
+        header.className = "calendar-weekday";
+        header.textContent = day;
+        elements.calendarWeekdays.appendChild(header);
+      });
+    }
 
+    const gridDays = getDaysGrid(viewDate, viewMode);
     const byDay = new Map();
-    monthEvents.forEach((event) => {
-      const key = toDayKey(new Date(event.startAt));
+    Object.entries(eventsById || {}).forEach(([id, event]) => {
+      const key = toDayKey(new Date(event.startAt || 0));
       if (!byDay.has(key)) byDay.set(key, []);
-      byDay.get(key).push(event);
+      byDay.get(key).push({ id, ...event });
     });
 
     elements.calendarGrid.innerHTML = "";
-    getDaysGrid(viewDate).forEach((dayDate) => {
+    if (viewMode === "day") elements.calendarGrid.style.gridTemplateColumns = "1fr";
+    else if (viewMode === "week")
+      elements.calendarGrid.style.gridTemplateColumns = "repeat(7,minmax(0,1fr))";
+    else elements.calendarGrid.style.gridTemplateColumns = "repeat(7,minmax(0,1fr))";
+
+    gridDays.forEach((dayDate) => {
       const cell = document.createElement("div");
       cell.className = "calendar-day";
 
@@ -160,27 +152,28 @@ export function initCalendar(elements, notifyError) {
       dayLabel.textContent = String(dayDate.getDate());
       cell.appendChild(dayLabel);
 
-      (byDay.get(key) || []).forEach((event) => {
-        const row = document.createElement("div");
-        row.className = "calendar-event";
+      (byDay.get(key) || [])
+        .sort((a, b) => (a.startAt || 0) - (b.startAt || 0))
+        .forEach((event) => {
+          const row = document.createElement("div");
+          row.className = "calendar-event";
 
-        const text = document.createElement("button");
-        text.className = "calendar-event-btn";
-        const linkBadge = event.linkType ? ` [${event.linkType}]` : "";
-        text.textContent = `${formatTimeRange(event)} ${event.title}${linkBadge}`;
-        text.addEventListener("click", () => handleEditEvent(event.id, event));
+          const text = document.createElement("button");
+          text.className = "calendar-event-btn";
+          text.textContent = `${formatTimeRange(event)} ${event.title}${event.linkType ? ` [${event.linkType}]` : ""}`;
+          text.addEventListener("click", () => handleEditEvent(event.id, event));
 
-        const removeBtn = document.createElement("button");
-        removeBtn.className = "btn-danger";
-        removeBtn.textContent = "X";
-        removeBtn.addEventListener("click", () =>
-          deleteCalendarEvent(event.id).catch((e) => notifyError(e, "Failed to delete event")),
-        );
+          const removeBtn = document.createElement("button");
+          removeBtn.className = "btn-danger";
+          removeBtn.textContent = "X";
+          removeBtn.addEventListener("click", () =>
+            deleteCalendarEvent(event.id).catch((e) => notifyError(e, "Failed to delete event")),
+          );
 
-        row.appendChild(text);
-        row.appendChild(removeBtn);
-        cell.appendChild(row);
-      });
+          row.appendChild(text);
+          row.appendChild(removeBtn);
+          cell.appendChild(row);
+        });
 
       elements.calendarGrid.appendChild(cell);
     });
@@ -188,15 +181,29 @@ export function initCalendar(elements, notifyError) {
 
   elements.addCalendarEventBtn.addEventListener("click", handleCreateEvent);
   elements.calendarPrevMonthBtn.addEventListener("click", () => {
-    viewDate = new Date(viewDate.getFullYear(), viewDate.getMonth() - 1, 1);
+    const delta = viewMode === "day" ? -1 : viewMode === "week" ? -7 : -30;
+    viewDate = new Date(viewDate.getFullYear(), viewDate.getMonth(), viewDate.getDate() + delta);
     render();
   });
   elements.calendarNextMonthBtn.addEventListener("click", () => {
-    viewDate = new Date(viewDate.getFullYear(), viewDate.getMonth() + 1, 1);
+    const delta = viewMode === "day" ? 1 : viewMode === "week" ? 7 : 30;
+    viewDate = new Date(viewDate.getFullYear(), viewDate.getMonth(), viewDate.getDate() + delta);
     render();
   });
   elements.calendarTodayBtn.addEventListener("click", () => {
     viewDate = new Date();
+    render();
+  });
+  elements.calendarViewMonthBtn.addEventListener("click", () => {
+    viewMode = "month";
+    render();
+  });
+  elements.calendarViewWeekBtn.addEventListener("click", () => {
+    viewMode = "week";
+    render();
+  });
+  elements.calendarViewDayBtn.addEventListener("click", () => {
+    viewMode = "day";
     render();
   });
 

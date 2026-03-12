@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <title>Life RPG Dashboard</title>
+    <title>I-can-do Workspace</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="stylesheet" href="./style.css" />
   </head>
@@ -10,12 +10,10 @@
   <body>
     <div class="app-layout">
       <aside class="sidebar card">
-        <h2>Navigate</h2>
+        <h2>Mode</h2>
         <nav class="sidebar-nav" id="sidebarNav">
           <button class="nav-btn is-active" data-view="dashboard" title="Dashboard">🏠</button>
           <button class="nav-btn" data-view="calendar" title="Calendar">📅</button>
-          <button class="nav-btn" data-view="focus" title="Focus">🎯</button>
-          <button class="nav-btn" data-view="notes" title="Notes">📝</button>
           <button class="nav-btn" data-view="finance" title="Finance">💰</button>
           <button class="nav-btn" data-view="stats" title="Stats">📊</button>
         </nav>
@@ -33,13 +31,8 @@
             <ul id="todayEventsList"></ul>
           </section>
 
-          <section class="card activity">
-            <h2>Recent Activity Log</h2>
-            <ul id="activityLogList"></ul>
-          </section>
-
           <section class="card">
-            <h2>Quick Stat Overview</h2>
+            <h2>Quick Stats (EXP / Focus today)</h2>
             <div class="quick-stats-grid">
               <div><span>ATK</span><strong id="quick-atk">0</strong></div>
               <div><span>INT</span><strong id="quick-int">0</strong></div>
@@ -51,59 +44,70 @@
               <div><span>LVL / EXP</span><strong id="quick-level-exp">1 / 0</strong></div>
             </div>
           </section>
+
+          <section class="card activity">
+            <h2>Recent Activity</h2>
+            <ul id="activityLogList"></ul>
+          </section>
         </section>
 
         <section class="main-view" data-view="calendar">
-          <section class="card calendar">
-            <h2>Calendar</h2>
-            <div class="calendar-input">
-              <input type="text" id="calendarTitleInput" placeholder="Event title" />
-              <input type="datetime-local" id="calendarStartInput" />
-              <input type="datetime-local" id="calendarEndInput" />
-              <textarea id="calendarNotesInput" placeholder="Event notes (optional)"></textarea>
-              <select id="calendarLinkTypeInput">
-                <option value="">No link</option>
-                <option value="task">Task</option>
-                <option value="focus">Focus Session</option>
-              </select>
-              <input
-                type="text"
-                id="calendarLinkIdInput"
-                placeholder="Linked task/session id (optional)"
-              />
-              <button id="addCalendarEventBtn">Create Event</button>
-            </div>
-            <div class="calendar-toolbar">
-              <button id="calendarPrevMonthBtn">◀</button>
-              <strong id="calendarMonthLabel"></strong>
-              <button id="calendarNextMonthBtn">▶</button>
-              <button id="calendarTodayBtn">Today</button>
-            </div>
-            <div class="calendar-weekdays" id="calendarWeekdays"></div>
-            <div class="calendar-grid" id="calendarGrid"></div>
-          </section>
-        </section>
+          <section class="card calendar-workspace">
+            <h2>Calendar Workspace</h2>
+            <div class="calendar-work-grid">
+              <section class="task-board" aria-label="Task board">
+                <h3>Task Board</h3>
+                <div class="task-columns">
+                  <div class="task-column">
+                    <h4>New</h4>
+                    <ul id="kanban-new"></ul>
+                  </div>
+                  <div class="task-column">
+                    <h4>In Progress</h4>
+                    <ul id="kanban-progress"></ul>
+                  </div>
+                  <div class="task-column">
+                    <h4>Completed</h4>
+                    <ul id="kanban-done"></ul>
+                  </div>
+                  <div class="task-column">
+                    <h4>Canceled</h4>
+                    <ul id="kanban-canceled"></ul>
+                  </div>
+                </div>
+              </section>
 
-        <section class="main-view" data-view="focus">
-          <section class="card focus">
-            <h2>Focus Session</h2>
-            <div class="focus-controls">
-              <button data-duration="90">Start 90 min</button>
-              <button data-duration="120">Start 120 min</button>
-              <button id="cancelFocusBtn" class="btn-danger">Cancel Active</button>
+              <section class="calendar-timeline">
+                <div class="calendar-input">
+                  <input type="text" id="calendarTitleInput" placeholder="Event title" />
+                  <input type="datetime-local" id="calendarStartInput" />
+                  <input type="datetime-local" id="calendarEndInput" />
+                  <textarea id="calendarNotesInput" placeholder="Event notes (optional)"></textarea>
+                  <select id="calendarLinkTypeInput">
+                    <option value="">No link</option>
+                    <option value="task">Task</option>
+                    <option value="focus">Focus Session</option>
+                  </select>
+                  <input
+                    type="text"
+                    id="calendarLinkIdInput"
+                    placeholder="Linked task/session id (optional)"
+                  />
+                  <button id="addCalendarEventBtn">Create Event</button>
+                </div>
+                <div class="calendar-toolbar">
+                  <button id="calendarPrevMonthBtn">◀</button>
+                  <strong id="calendarMonthLabel"></strong>
+                  <button id="calendarNextMonthBtn">▶</button>
+                  <button id="calendarTodayBtn">Today</button>
+                  <button id="calendarViewMonthBtn">Month</button>
+                  <button id="calendarViewWeekBtn">Week</button>
+                  <button id="calendarViewDayBtn">Day</button>
+                </div>
+                <div class="calendar-weekdays" id="calendarWeekdays"></div>
+                <div class="calendar-grid" id="calendarGrid"></div>
+              </section>
             </div>
-            <div class="focus-timer" id="focusTimer">00:00</div>
-            <h3>Sessions</h3>
-            <ul id="focusSessionList"></ul>
-          </section>
-        </section>
-
-        <section class="main-view" data-view="notes">
-          <section class="card notes">
-            <h2>Notes</h2>
-            <textarea id="noteInput" placeholder="Write quick note..."></textarea>
-            <button id="saveNoteBtn">Save</button>
-            <ul id="notesList"></ul>
           </section>
         </section>
 
@@ -111,12 +115,17 @@
           <section class="card finance">
             <h2>Finance</h2>
             <div class="balance">Balance: <strong id="balance">0</strong></div>
+            <div class="finance-summary">
+              <span>Income: <strong id="incomeTotal">0</strong></span>
+              <span>Outcome: <strong id="expenseTotal">0</strong></span>
+            </div>
             <div class="finance-input">
               <input type="number" id="amountInput" placeholder="Amount" />
               <select id="typeInput">
                 <option value="income">Income</option>
                 <option value="expense">Expense</option>
               </select>
+              <label><input type="checkbox" id="isRecurringInput" /> Recurring monthly</label>
               <button id="addTransactionBtn">Add</button>
             </div>
             <ul id="transactionList"></ul>
@@ -156,33 +165,46 @@
                 <div class="progress"><div id="bar-wis" class="bar"></div></div>
               </div>
             </div>
-            <div class="level-box">
-              <div>Level: <strong id="level">1</strong></div>
-              <div>EXP: <strong id="exp">0</strong></div>
+            <div class="level">
+              Level: <strong id="level">1</strong> | EXP: <strong id="exp">0</strong>
             </div>
           </section>
         </section>
       </main>
 
-      <aside class="task-panel">
-        <section class="card daily">
-          <h2>Daily Tasks</h2>
+      <aside class="task-panel card">
+        <h2>Actions</h2>
+
+        <section>
+          <h3>Daily Tasks <small id="dailyProgressText">0/0 completed</small></h3>
           <ul id="dailyTaskList"></ul>
         </section>
 
-        <section class="card tasks">
-          <h2>Tasks</h2>
-          <div class="task-input">
-            <input type="text" id="taskInput" placeholder="Task title" />
-            <input type="text" id="taskDescriptionInput" placeholder="Task description" />
-            <button id="addTaskBtn">Add</button>
-          </div>
-          <ul id="taskList"></ul>
+        <section>
+          <h3>Habits</h3>
+          <ul id="habitList"></ul>
         </section>
 
-        <section class="card habits">
-          <h2>Habits</h2>
-          <ul id="habitList"></ul>
+        <section>
+          <h3>Tasks</h3>
+          <button id="toggleTaskCreationBtn">Create Task</button>
+          <div id="taskCreationPanel" class="task-creation-panel">
+            <input type="text" id="taskInput" placeholder="Task title" />
+            <textarea id="taskDescriptionInput" placeholder="Task description"></textarea>
+            <select id="taskTypeInput">
+              <option value="task">work</option>
+              <option value="personal">personal</option>
+              <option value="study">study</option>
+            </select>
+            <select id="taskPriorityInput">
+              <option value="low">low</option>
+              <option value="medium">medium</option>
+              <option value="high">high</option>
+            </select>
+            <input type="datetime-local" id="taskScheduleInput" />
+            <button id="addTaskBtn">Save Task</button>
+          </div>
+          <ul id="taskList"></ul>
         </section>
       </aside>
     </div>
