@@ -2,6 +2,7 @@ export {
   getPaths,
   subscribe,
   unsubscribeAll,
+  statsApi,
   tasksApi,
   notesApi,
   financeApi,
