@@ -1,6 +1,6 @@
 import { requireEnum, requireNonEmptyText } from "./validation.js";
 
-const STATUS_VALUES = ["new", "progress", "done", "canceled"];
+const STATUS_VALUES = ["backlog", "todo", "in_progress", "done"];
 const PRIORITY_VALUES = ["low", "medium", "high"];
 const TYPE_VALUES = ["task", "daily", "habit", "work", "personal", "study"];
 
@@ -42,12 +42,14 @@ export function createWorkItemPayload({
   description = "",
   condition = "",
 }) {
+  const resolvedType = requireEnum(type, TYPE_VALUES, "Type");
+
   return {
     title: requireNonEmptyText(title, "Title", { maxLength: 120 }),
-    type: requireEnum(type, TYPE_VALUES, "Type"),
+    type: resolvedType,
     priority: requireEnum(priority, PRIORITY_VALUES, "Priority"),
     schedule: normalizeSchedule(schedule),
-    status: "new",
+    status: resolvedType === "task" ? "backlog" : "todo",
     description: String(description || "").trim(),
     condition: String(condition || "").trim(),
     completed: false,

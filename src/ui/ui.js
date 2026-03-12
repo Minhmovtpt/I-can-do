@@ -44,16 +44,11 @@ const elements = {
   mainViews: document.querySelectorAll(".main-view"),
   calendarTabs: document.getElementById("calendarTabs"),
   calendarModes: document.querySelectorAll(".calendar-mode"),
-  dailyTaskInput: document.getElementById("dailyTaskInput"),
-  dailyTaskTimeInput: document.getElementById("dailyTaskTimeInput"),
-  dailyTaskConditionInput: document.getElementById("dailyTaskConditionInput"),
+  dailyTaskCreationArea: document.getElementById("dailyTaskCreationArea"),
   addDailyTaskBtn: document.getElementById("addDailyTaskBtn"),
   dailyTaskList: document.getElementById("dailyTaskList"),
   dailyProgressText: document.getElementById("dailyProgressText"),
-  habitInput: document.getElementById("habitInput"),
-  habitDayInput: document.getElementById("habitDayInput"),
-  habitTimeInput: document.getElementById("habitTimeInput"),
-  habitConditionInput: document.getElementById("habitConditionInput"),
+  habitCreationArea: document.getElementById("habitCreationArea"),
   addHabitBtn: document.getElementById("addHabitBtn"),
   habitList: document.getElementById("habitList"),
   taskInput: document.getElementById("taskInput"),
@@ -66,10 +61,10 @@ const elements = {
   toggleTaskCreationBtn: document.getElementById("toggleTaskCreationBtn"),
   addTaskBtn: document.getElementById("addTaskBtn"),
   taskList: document.getElementById("taskList"),
-  kanbanNew: document.getElementById("kanban-new"),
-  kanbanProgress: document.getElementById("kanban-progress"),
+  kanbanBacklog: document.getElementById("kanban-backlog"),
+  kanbanTodo: document.getElementById("kanban-todo"),
+  kanbanInProgress: document.getElementById("kanban-in-progress"),
   kanbanDone: document.getElementById("kanban-done"),
-  kanbanCanceled: document.getElementById("kanban-canceled"),
   focusTimer: document.getElementById("focusTimer"),
   focusButtons: document.querySelectorAll(".focus-controls button[data-duration]"),
   cancelFocusBtn: document.getElementById("cancelFocusBtn"),
@@ -86,13 +81,6 @@ const elements = {
   incomeTotal: document.getElementById("incomeTotal"),
   expenseTotal: document.getElementById("expenseTotal"),
   activityLogList: document.getElementById("activityLogList"),
-  calendarTitleInput: document.getElementById("calendarTitleInput"),
-  calendarStartInput: document.getElementById("calendarStartInput"),
-  calendarEndInput: document.getElementById("calendarEndInput"),
-  calendarNotesInput: document.getElementById("calendarNotesInput"),
-  calendarLinkTypeInput: document.getElementById("calendarLinkTypeInput"),
-  calendarLinkIdInput: document.getElementById("calendarLinkIdInput"),
-  addCalendarEventBtn: document.getElementById("addCalendarEventBtn"),
   calendarPrevMonthBtn: document.getElementById("calendarPrevMonthBtn"),
   calendarNextMonthBtn: document.getElementById("calendarNextMonthBtn"),
   calendarTodayBtn: document.getElementById("calendarTodayBtn"),
@@ -156,10 +144,14 @@ function mirrorQuickStats(extra = {}) {
 }
 
 function renderTodaySummary() {
+  const taskCards = elements.taskList.querySelectorAll(".work-card");
+  const completedTasks = Array.from(taskCards).filter((card) =>
+    card.textContent.includes("Status: Done"),
+  ).length;
   const rows = [
     `Daily tasks: ${elements.dailyTaskList.children.length}`,
-    `Open tasks: ${elements.taskList.querySelectorAll(".item-main:not(.is-completed)").length}`,
-    `Completed tasks: ${elements.taskList.querySelectorAll(".item-main.is-completed").length}`,
+    `Open tasks: ${taskCards.length - completedTasks}`,
+    `Completed tasks: ${completedTasks}`,
     `Habits tracked: ${elements.habitList.children.length}`,
   ];
 

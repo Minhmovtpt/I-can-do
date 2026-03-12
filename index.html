@@ -67,20 +67,20 @@
                 <h3>Task Board</h3>
                 <div class="task-columns">
                   <div class="task-column">
-                    <h4>New</h4>
-                    <ul id="kanban-new"></ul>
+                    <h4>Backlog</h4>
+                    <ul id="kanban-backlog"></ul>
+                  </div>
+                  <div class="task-column">
+                    <h4>Todo</h4>
+                    <ul id="kanban-todo"></ul>
                   </div>
                   <div class="task-column">
                     <h4>In Progress</h4>
-                    <ul id="kanban-progress"></ul>
+                    <ul id="kanban-in-progress"></ul>
                   </div>
                   <div class="task-column">
-                    <h4>Completed</h4>
+                    <h4>Done</h4>
                     <ul id="kanban-done"></ul>
-                  </div>
-                  <div class="task-column">
-                    <h4>Canceled</h4>
-                    <ul id="kanban-canceled"></ul>
                   </div>
                 </div>
               </section>
@@ -88,23 +88,6 @@
 
             <section class="calendar-mode" data-calendar-mode="timeline">
               <section class="calendar-timeline">
-                <div class="calendar-input">
-                  <input type="text" id="calendarTitleInput" placeholder="Event title" />
-                  <input type="datetime-local" id="calendarStartInput" />
-                  <input type="datetime-local" id="calendarEndInput" />
-                  <textarea id="calendarNotesInput" placeholder="Event notes (optional)"></textarea>
-                  <select id="calendarLinkTypeInput">
-                    <option value="">No link</option>
-                    <option value="task">Task</option>
-                    <option value="focus">Focus Session</option>
-                  </select>
-                  <input
-                    type="text"
-                    id="calendarLinkIdInput"
-                    placeholder="Linked task/session id (optional)"
-                  />
-                  <button id="addCalendarEventBtn">Create Event</button>
-                </div>
                 <div class="calendar-toolbar">
                   <button id="calendarPrevMonthBtn">◀</button>
                   <strong id="calendarMonthLabel"></strong>
@@ -210,32 +193,15 @@
 
         <section>
           <h3>Daily Tasks <small id="dailyProgressText">0/0 completed</small></h3>
-          <div class="sub-form">
-            <input type="text" id="dailyTaskInput" placeholder="Daily task title" />
-            <input type="time" id="dailyTaskTimeInput" />
-            <input type="text" id="dailyTaskConditionInput" placeholder="Condition" />
-            <button id="addDailyTaskBtn">Add Daily Task</button>
-          </div>
+          <button id="addDailyTaskBtn">+ Add Daily Task</button>
+          <div id="dailyTaskCreationArea"></div>
           <ul id="dailyTaskList"></ul>
         </section>
 
         <section>
           <h3>Habits</h3>
-          <div class="sub-form">
-            <input type="text" id="habitInput" placeholder="Habit title" />
-            <select id="habitDayInput">
-              <option value="1">Monday</option>
-              <option value="2">Tuesday</option>
-              <option value="3">Wednesday</option>
-              <option value="4">Thursday</option>
-              <option value="5">Friday</option>
-              <option value="6">Saturday</option>
-              <option value="0">Sunday</option>
-            </select>
-            <input type="time" id="habitTimeInput" />
-            <input type="text" id="habitConditionInput" placeholder="Condition" />
-            <button id="addHabitBtn">Add Habit</button>
-          </div>
+          <button id="addHabitBtn">+ Add Habit</button>
+          <div id="habitCreationArea"></div>
           <ul id="habitList"></ul>
         </section>
 
