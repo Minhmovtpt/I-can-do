@@ -1,22 +1,6 @@
 import { tasksApi, dailyTasksApi, habitsApi } from "../core/firebase.js";
-import {
-  createCalendarEvent,
-  updateCalendarEvent,
-  deleteCalendarEvent,
-  subscribeCalendarEvents,
-} from "../services/calendarService.js";
 
 const WEEK_DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-
-function formatDateTimeValue(value) {
-  const d = new Date(value);
-  const yyyy = d.getFullYear();
-  const mm = String(d.getMonth() + 1).padStart(2, "0");
-  const dd = String(d.getDate()).padStart(2, "0");
-  const hh = String(d.getHours()).padStart(2, "0");
-  const min = String(d.getMinutes()).padStart(2, "0");
-  return `${yyyy}-${mm}-${dd}T${hh}:${min}`;
-}
 
 function formatTimeRange(event) {
   const start = new Date(event.startAt);
@@ -78,7 +62,7 @@ function scheduledItems(days, tasks, dailyTasks, habits) {
   const add = (dayKey, item) => {
     if (!keys.has(dayKey)) return;
     if (!byDay.has(dayKey)) byDay.set(dayKey, []);
-    byDay.get(dayKey).push(item);
+    byDay.get(dayKey).push({ ...item, readonly: true });
   };
 
   Object.entries(tasks || {}).forEach(([id, task]) => {
@@ -124,60 +108,15 @@ function scheduledItems(days, tasks, dailyTasks, habits) {
   return byDay;
 }
 
-export function initCalendar(elements, notifyError) {
+export function initCalendar(elements) {
   let viewDate = new Date();
   let viewMode = "month";
-  let eventsById = {};
   let tasksById = {};
   let dailyTasksById = {};
   let habitsById = {};
 
-  function setMonthLabel() {
-    elements.calendarMonthLabel.textContent = getMonthLabel(viewDate, viewMode);
-  }
-
-  async function handleCreateEvent() {
-    try {
-      await createCalendarEvent({
-        title: elements.calendarTitleInput.value,
-        startAt: elements.calendarStartInput.value,
-        endAt: elements.calendarEndInput.value,
-        notes: elements.calendarNotesInput.value,
-        linkType: elements.calendarLinkTypeInput.value,
-        linkId: elements.calendarLinkIdInput.value,
-      });
-      elements.calendarTitleInput.value = "";
-      elements.calendarNotesInput.value = "";
-      elements.calendarLinkTypeInput.value = "";
-      elements.calendarLinkIdInput.value = "";
-    } catch (error) {
-      notifyError(error, "Failed to create event");
-    }
-  }
-
-  async function handleEditEvent(eventId, event) {
-    const title = prompt("Edit event title:", event.title || "");
-    if (title === null) return;
-    const startAt = prompt(
-      "Edit start date/time (YYYY-MM-DDTHH:mm):",
-      formatDateTimeValue(event.startAt),
-    );
-    if (startAt === null) return;
-    const endAt = prompt(
-      "Edit end date/time (YYYY-MM-DDTHH:mm):",
-      formatDateTimeValue(event.endAt),
-    );
-    if (endAt === null) return;
-
-    try {
-      await updateCalendarEvent(eventId, { title, startAt, endAt });
-    } catch (error) {
-      notifyError(error, "Failed to update event");
-    }
-  }
-
   function render() {
-    setMonthLabel();
+    elements.calendarMonthLabel.textContent = getMonthLabel(viewDate, viewMode);
     elements.calendarWeekdays.innerHTML = "";
 
     if (viewMode !== "day") {
@@ -190,19 +129,7 @@ export function initCalendar(elements, notifyError) {
     }
 
     const gridDays = getDaysGrid(viewDate, viewMode);
-    const byDay = new Map();
-
-    Object.entries(eventsById || {}).forEach(([id, event]) => {
-      const key = toDayKey(new Date(event.startAt || 0));
-      if (!byDay.has(key)) byDay.set(key, []);
-      byDay.get(key).push({ id, ...event, isGenerated: false });
-    });
-
-    const generated = scheduledItems(gridDays, tasksById, dailyTasksById, habitsById);
-    generated.forEach((rows, key) => {
-      if (!byDay.has(key)) byDay.set(key, []);
-      byDay.get(key).push(...rows.map((item) => ({ ...item, isGenerated: true })));
-    });
+    const byDay = scheduledItems(gridDays, tasksById, dailyTasksById, habitsById);
 
     elements.calendarGrid.innerHTML = "";
     elements.calendarGrid.style.gridTemplateColumns =
@@ -231,29 +158,10 @@ export function initCalendar(elements, notifyError) {
           row.className = "calendar-event";
 
           const text = document.createElement("button");
-          text.className = `calendar-event-btn${event.isGenerated ? " is-generated" : ""}`;
-          const tag = event.kind
-            ? ` [${event.kind}]`
-            : event.linkType
-              ? ` [${event.linkType}]`
-              : "";
-          text.textContent = `${formatTimeRange(event)} ${event.title}${tag}`;
-          if (!event.isGenerated) {
-            text.addEventListener("click", () => handleEditEvent(event.id, event));
-          }
-
+          text.className = "calendar-event-btn is-generated";
+          text.disabled = true;
+          text.textContent = `${formatTimeRange(event)} ${event.title} [${event.kind}]`;
           row.appendChild(text);
-
-          if (!event.isGenerated) {
-            const removeBtn = document.createElement("button");
-            removeBtn.className = "btn-danger";
-            removeBtn.textContent = "X";
-            removeBtn.addEventListener("click", () =>
-              deleteCalendarEvent(event.id).catch((e) => notifyError(e, "Failed to delete event")),
-            );
-            row.appendChild(removeBtn);
-          }
-
           cell.appendChild(row);
         });
 
@@ -261,7 +169,6 @@ export function initCalendar(elements, notifyError) {
     });
   }
 
-  elements.addCalendarEventBtn.addEventListener("click", handleCreateEvent);
   elements.calendarPrevMonthBtn.addEventListener("click", () => {
     const delta = viewMode === "day" ? -1 : viewMode === "week" ? -7 : -30;
     viewDate = new Date(viewDate.getFullYear(), viewDate.getMonth(), viewDate.getDate() + delta);
@@ -290,10 +197,6 @@ export function initCalendar(elements, notifyError) {
   });
 
   const unsubscribers = [
-    subscribeCalendarEvents((events) => {
-      eventsById = events || {};
-      render();
-    }),
     tasksApi.subscribe((tasks) => {
       tasksById = tasks || {};
       render();
