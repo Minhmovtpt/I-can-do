@@ -3,9 +3,13 @@ import {
   createTransaction,
   updateTransaction,
   deleteTransaction,
-  syncBalance
+  syncBalance,
 } from "../services/financeService.js";
-import { calculateBalance } from "../core/financeLogic.js";
+import {
+  calculateBalance,
+  calculateFinanceTotals,
+  materializeRecurringTransactions,
+} from "../core/financeLogic.js";
 
 function buildActions(actions) {
   const wrap = document.createElement("div");
@@ -23,8 +27,13 @@ function buildActions(actions) {
 export function initFinance(elements, notifyError) {
   async function addTransaction() {
     try {
-      await createTransaction({ amount: elements.amountInput.value, type: elements.typeInput.value });
+      await createTransaction({
+        amount: elements.amountInput.value,
+        type: elements.typeInput.value,
+        recurringMonthly: elements.isRecurringInput.checked,
+      });
       elements.amountInput.value = "";
+      elements.isRecurringInput.checked = false;
     } catch (error) {
       notifyError(error, "Failed to add transaction");
     }
@@ -35,7 +44,11 @@ export function initFinance(elements, notifyError) {
     if (nextAmount === null) return;
 
     try {
-      await updateTransaction(txId, { amount: nextAmount, type: tx.type });
+      await updateTransaction(txId, {
+        amount: nextAmount,
+        type: tx.type,
+        recurringMonthly: tx.recurringMonthly,
+      });
     } catch (error) {
       notifyError(error, "Failed to update transaction");
     }
@@ -45,33 +58,42 @@ export function initFinance(elements, notifyError) {
 
   const unsubscribe = financeApi.subscribeTransactions(async (transactions) => {
     elements.transactionList.innerHTML = "";
-    const rows = transactions ? Object.entries(transactions) : [];
+    const expanded = materializeRecurringTransactions(transactions || {});
+    const rows = Object.entries(expanded);
 
     rows
       .sort(([, a], [, b]) => (b.date || 0) - (a.date || 0))
       .forEach(([id, tx]) => {
         const li = document.createElement("li");
         const text = document.createElement("span");
-        text.textContent = `${tx.type}: ${tx.amount}`;
+        text.textContent = `${tx.type}: ${tx.amount}${tx.recurringMonthly ? " (monthly)" : ""}${
+          tx.recurringGenerated ? " [auto]" : ""
+        }`;
         li.appendChild(text);
-        li.appendChild(
-          buildActions([
-            { label: "Edit", onClick: () => editTransaction(id, tx) },
-            {
-              label: "Delete",
-              className: "btn-danger",
-              onClick: () => deleteTransaction(id).catch((e) => notifyError(e, "Failed to delete transaction"))
-            }
-          ])
-        );
+
+        const actions = [];
+        if (!tx.recurringGenerated) {
+          actions.push({ label: "Edit", onClick: () => editTransaction(id, tx) });
+          actions.push({
+            label: "Delete",
+            className: "btn-danger",
+            onClick: () =>
+              deleteTransaction(id).catch((e) => notifyError(e, "Failed to delete transaction")),
+          });
+        }
+
+        if (actions.length) li.appendChild(buildActions(actions));
         elements.transactionList.appendChild(li);
       });
 
-    const balance = calculateBalance(transactions || {});
+    const totals = calculateFinanceTotals(expanded);
+    const balance = calculateBalance(expanded);
+    elements.incomeTotal.textContent = totals.income;
+    elements.expenseTotal.textContent = totals.expense;
     elements.balance.textContent = balance;
 
     try {
-      await syncBalance(transactions || {});
+      await syncBalance(expanded);
     } catch (error) {
       notifyError(error, "Failed to sync balance");
     }
