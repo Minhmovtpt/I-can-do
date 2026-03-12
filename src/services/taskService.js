@@ -1,24 +1,19 @@
 import { tasksApi } from "../core/firebaseService.js";
 import { requireNonEmptyText } from "../core/validation.js";
 import { recordTaskCompletion } from "./progressService.js";
-
-function formatTaskPayload({ title, description = "" }) {
-  return {
-    title: requireNonEmptyText(title, "Task title", { maxLength: 120 }),
-    description: String(description || "").trim(),
-    completed: false,
-    reward: { exp: 20 },
-    createdAt: Date.now()
-  };
-}
+import {
+  createWorkItemPayload,
+  normalizeSchedule,
+  resolveWorkItemStatus,
+} from "../core/workItemModel.js";
 
 export async function createTask(input) {
-  return tasksApi.add(formatTaskPayload(input));
+  return tasksApi.add(createWorkItemPayload(input));
 }
 
 export async function updateTask(taskId, updates = {}) {
   const payload = {
-    updatedAt: Date.now()
+    updatedAt: Date.now(),
   };
 
   if (updates.title !== undefined) {
@@ -27,12 +22,30 @@ export async function updateTask(taskId, updates = {}) {
   if (updates.description !== undefined) {
     payload.description = String(updates.description || "").trim();
   }
+  if (updates.type !== undefined) {
+    payload.type = updates.type;
+  }
+  if (updates.priority !== undefined) {
+    payload.priority = updates.priority;
+  }
+  if (updates.schedule !== undefined) {
+    payload.schedule = normalizeSchedule(updates.schedule);
+  }
+  if (updates.status !== undefined) {
+    payload.status = resolveWorkItemStatus(updates.status);
+    payload.completed = payload.status === "done";
+  }
 
   return tasksApi.updateById(taskId, payload);
 }
 
 export async function completeTask(taskId, task = null) {
-  await tasksApi.updateById(taskId, { completed: true, completedAt: Date.now() });
+  await tasksApi.updateById(taskId, {
+    completed: true,
+    completedAt: Date.now(),
+    status: "done",
+    updatedAt: Date.now(),
+  });
   recordTaskCompletion(task || {});
 }
 

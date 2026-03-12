@@ -1,17 +1,5 @@
 import { completeHabit, subscribeHabits } from "../services/habitService.js";
 
-function buildActions(actions) {
-  const wrap = document.createElement("div");
-  wrap.className = "item-actions";
-  actions.forEach(({ label, onClick }) => {
-    const btn = document.createElement("button");
-    btn.textContent = label;
-    btn.addEventListener("click", onClick);
-    wrap.appendChild(btn);
-  });
-  return wrap;
-}
-
 export function initHabits(elements, notifyError) {
   async function onCompleteHabit(habitId, habit) {
     try {
@@ -27,10 +15,20 @@ export function initHabits(elements, notifyError) {
 
     Object.entries(habits).forEach(([id, habit]) => {
       const li = document.createElement("li");
+      const row = document.createElement("div");
+      row.className = "item-actions";
       const title = document.createElement("span");
       title.textContent = `${habit.title} (streak: ${habit.streak || 0})`;
-      li.appendChild(title);
-      li.appendChild(buildActions([{ label: "Complete", onClick: () => onCompleteHabit(id, habit) }]));
+      const tick = document.createElement("input");
+      tick.type = "checkbox";
+      tick.className = "habit-tick";
+      tick.checked = habit.lastCompleted === new Date().toDateString();
+      tick.addEventListener("change", () => {
+        if (tick.checked) onCompleteHabit(id, habit);
+      });
+      row.appendChild(title);
+      row.appendChild(tick);
+      li.appendChild(row);
       elements.habitList.appendChild(li);
     });
   });

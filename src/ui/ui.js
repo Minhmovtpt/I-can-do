@@ -3,9 +3,7 @@ import { initRewardEngine } from "../core/rewardEngine.js";
 import { initStats } from "../modules/stats.js";
 import { initTasks } from "../modules/tasks.js";
 import { initHabits } from "../modules/habits.js";
-import { initNotes } from "../modules/notes.js";
 import { initFinance } from "../modules/finance.js";
-import { initFocus } from "../modules/focus.js";
 import { initCalendar } from "../modules/calendar.js";
 
 const elements = {
@@ -43,23 +41,29 @@ const elements = {
   navButtons: document.querySelectorAll(".nav-btn"),
   mainViews: document.querySelectorAll(".main-view"),
   dailyTaskList: document.getElementById("dailyTaskList"),
+  dailyProgressText: document.getElementById("dailyProgressText"),
   taskInput: document.getElementById("taskInput"),
   taskDescriptionInput: document.getElementById("taskDescriptionInput"),
+  taskTypeInput: document.getElementById("taskTypeInput"),
+  taskPriorityInput: document.getElementById("taskPriorityInput"),
+  taskScheduleInput: document.getElementById("taskScheduleInput"),
+  taskCreationPanel: document.getElementById("taskCreationPanel"),
+  toggleTaskCreationBtn: document.getElementById("toggleTaskCreationBtn"),
   addTaskBtn: document.getElementById("addTaskBtn"),
   taskList: document.getElementById("taskList"),
+  kanbanNew: document.getElementById("kanban-new"),
+  kanbanProgress: document.getElementById("kanban-progress"),
+  kanbanDone: document.getElementById("kanban-done"),
+  kanbanCanceled: document.getElementById("kanban-canceled"),
   habitList: document.getElementById("habitList"),
-  focusTimer: document.getElementById("focusTimer"),
-  focusButtons: document.querySelectorAll(".focus-controls button[data-duration]"),
-  cancelFocusBtn: document.getElementById("cancelFocusBtn"),
-  focusSessionList: document.getElementById("focusSessionList"),
-  noteInput: document.getElementById("noteInput"),
-  saveNoteBtn: document.getElementById("saveNoteBtn"),
-  notesList: document.getElementById("notesList"),
   amountInput: document.getElementById("amountInput"),
   typeInput: document.getElementById("typeInput"),
+  isRecurringInput: document.getElementById("isRecurringInput"),
   addTransactionBtn: document.getElementById("addTransactionBtn"),
   transactionList: document.getElementById("transactionList"),
   balance: document.getElementById("balance"),
+  incomeTotal: document.getElementById("incomeTotal"),
+  expenseTotal: document.getElementById("expenseTotal"),
   activityLogList: document.getElementById("activityLogList"),
   calendarTitleInput: document.getElementById("calendarTitleInput"),
   calendarStartInput: document.getElementById("calendarStartInput"),
@@ -71,6 +75,9 @@ const elements = {
   calendarPrevMonthBtn: document.getElementById("calendarPrevMonthBtn"),
   calendarNextMonthBtn: document.getElementById("calendarNextMonthBtn"),
   calendarTodayBtn: document.getElementById("calendarTodayBtn"),
+  calendarViewMonthBtn: document.getElementById("calendarViewMonthBtn"),
+  calendarViewWeekBtn: document.getElementById("calendarViewWeekBtn"),
+  calendarViewDayBtn: document.getElementById("calendarViewDayBtn"),
   calendarMonthLabel: document.getElementById("calendarMonthLabel"),
   calendarWeekdays: document.getElementById("calendarWeekdays"),
   calendarGrid: document.getElementById("calendarGrid"),
@@ -78,15 +85,13 @@ const elements = {
 
 function notifyError(error, fallback = "Operation failed") {
   console.error(error);
-  const message = error?.message || fallback;
-  alert(message);
+  alert(error?.message || fallback);
 }
 
 function switchMainView(viewName) {
   elements.mainViews.forEach((view) => {
     view.classList.toggle("is-active", view.dataset.view === viewName);
   });
-
   elements.navButtons.forEach((button) => {
     button.classList.toggle("is-active", button.dataset.view === viewName);
   });
@@ -98,14 +103,19 @@ function initNavigation() {
     if (!button) return;
     switchMainView(button.dataset.view);
   });
+
+  elements.toggleTaskCreationBtn.addEventListener("click", () => {
+    elements.taskCreationPanel.classList.toggle("is-open");
+  });
 }
 
-function mirrorQuickStats() {
-  const statKeys = ["atk", "int", "disc", "cre", "end", "foc", "wis"];
-  statKeys.forEach((key) => {
+function mirrorQuickStats(extra = {}) {
+  ["atk", "int", "disc", "cre", "end", "foc", "wis"].forEach((key) => {
     elements.quickStats[key].textContent = elements[key].textContent;
   });
-  elements.quickStats.levelExp.textContent = `${elements.level.textContent} / ${elements.exp.textContent}`;
+
+  const focusToday = extra.focusToday ?? 0;
+  elements.quickStats.levelExp.textContent = `${elements.level.textContent} / ${elements.exp.textContent} • Focus ${focusToday}`;
 }
 
 function renderTodaySummary() {
@@ -114,7 +124,6 @@ function renderTodaySummary() {
     `Open tasks: ${elements.taskList.querySelectorAll(".item-main:not(.is-completed)").length}`,
     `Completed tasks: ${elements.taskList.querySelectorAll(".item-main.is-completed").length}`,
     `Habits tracked: ${elements.habitList.children.length}`,
-    `Focus sessions: ${elements.focusSessionList.children.length}`,
   ];
 
   elements.todaySummaryList.innerHTML = "";
@@ -127,20 +136,12 @@ function renderTodaySummary() {
 
 function renderTodayEvents() {
   const day = new Date().getDate();
-  const calendarDayLabel = Array.from(elements.calendarGrid.querySelectorAll(".calendar-day-label")).find(
-    (label) => Number(label.textContent) === day,
-  );
+  const calendarDayLabel = Array.from(
+    elements.calendarGrid.querySelectorAll(".calendar-day-label"),
+  ).find((label) => Number(label.textContent) === day);
 
   elements.todayEventsList.innerHTML = "";
-
-  if (!calendarDayLabel) {
-    const li = document.createElement("li");
-    li.textContent = "No events scheduled for today.";
-    elements.todayEventsList.appendChild(li);
-    return;
-  }
-
-  const dayCell = calendarDayLabel.closest(".calendar-day");
+  const dayCell = calendarDayLabel?.closest(".calendar-day");
   const eventButtons = dayCell ? dayCell.querySelectorAll(".calendar-event-btn") : [];
 
   if (!eventButtons.length) {
@@ -168,7 +169,6 @@ function observeDashboardData() {
     elements.dailyTaskList,
     elements.taskList,
     elements.habitList,
-    elements.focusSessionList,
     elements.calendarGrid,
     elements.level,
     elements.exp,
@@ -189,19 +189,31 @@ function observeDashboardData() {
 }
 
 function initActivityLog() {
+  const today = new Date().toDateString();
+
   return activityApi.subscribe((entries) => {
     elements.activityLogList.innerHTML = "";
     if (!entries) return;
 
-    Object.values(entries)
-      .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))
-      .slice(0, 20)
-      .forEach((entry) => {
-        const li = document.createElement("li");
-        li.textContent =
-          entry.message || `+${entry.value} ${String(entry.stat || "").toUpperCase()}`;
-        elements.activityLogList.appendChild(li);
-      });
+    const sorted = Object.values(entries).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+
+    sorted.slice(0, 5).forEach((entry) => {
+      const li = document.createElement("li");
+      li.textContent = entry.message || `+${entry.value} ${String(entry.stat || "").toUpperCase()}`;
+      elements.activityLogList.appendChild(li);
+    });
+
+    const focusToday = sorted.filter((entry) => {
+      const sameDay = new Date(entry.createdAt || 0).toDateString() === today;
+      return (
+        sameDay &&
+        String(entry.message || "")
+          .toLowerCase()
+          .includes("focus")
+      );
+    }).length;
+
+    mirrorQuickStats({ focusToday });
   });
 }
 
@@ -211,9 +223,7 @@ function init() {
   initStats(elements);
   initTasks(elements, notifyError);
   initHabits(elements, notifyError);
-  initNotes(elements, notifyError);
   initFinance(elements, notifyError);
-  initFocus(elements, notifyError);
   initCalendar(elements, notifyError);
   initActivityLog();
   observeDashboardData();
