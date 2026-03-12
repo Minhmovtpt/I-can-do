@@ -29,16 +29,6 @@ const elements = {
     foc: document.getElementById("bar-foc"),
     wis: document.getElementById("bar-wis"),
   },
-  quickStats: {
-    atk: document.getElementById("quick-atk"),
-    int: document.getElementById("quick-int"),
-    disc: document.getElementById("quick-disc"),
-    cre: document.getElementById("quick-cre"),
-    end: document.getElementById("quick-end"),
-    foc: document.getElementById("quick-foc"),
-    wis: document.getElementById("quick-wis"),
-    levelExp: document.getElementById("quick-level-exp"),
-  },
   currentDayOfWeek: document.getElementById("currentDayOfWeek"),
   currentDate: document.getElementById("currentDate"),
   currentTime: document.getElementById("currentTime"),
@@ -149,15 +139,6 @@ function initNavigation() {
   });
 }
 
-function mirrorQuickStats(extra = {}) {
-  ["atk", "int", "disc", "cre", "end", "foc", "wis"].forEach((key) => {
-    elements.quickStats[key].textContent = elements[key].textContent;
-  });
-
-  const focusToday = extra.focusToday ?? 0;
-  elements.quickStats.levelExp.textContent = `${elements.level.textContent} / ${elements.exp.textContent} • Focus ${focusToday}`;
-}
-
 function renderDateTime() {
   const now = new Date();
   elements.currentDayOfWeek.textContent = now.toLocaleDateString(undefined, { weekday: "long" });
@@ -174,8 +155,19 @@ function initDateTime() {
 }
 
 function initQuickNote() {
+  const storageKey = "quick-note-draft";
+  const savedDraft = localStorage.getItem(storageKey);
+  if (savedDraft) {
+    elements.quickNoteInput.value = savedDraft;
+  }
+
+  elements.quickNoteInput.addEventListener("input", () => {
+    localStorage.setItem(storageKey, elements.quickNoteInput.value);
+  });
+
   elements.quickNoteClearBtn.addEventListener("click", () => {
     elements.quickNoteInput.value = "";
+    localStorage.removeItem(storageKey);
   });
 
   elements.quickNotePushBtn.addEventListener("click", async () => {
@@ -183,6 +175,7 @@ function initQuickNote() {
     try {
       await createNote(elements.quickNoteInput.value);
       elements.quickNoteInput.value = "";
+      localStorage.removeItem(storageKey);
     } catch (error) {
       notifyError(error, "Failed to push quick note");
     }
@@ -235,7 +228,6 @@ function renderTodayEvents() {
 
 function observeDashboardData() {
   const observer = new MutationObserver(() => {
-    mirrorQuickStats();
     renderTodaySummary();
     renderTodayEvents();
   });
@@ -259,14 +251,11 @@ function observeDashboardData() {
     observer.observe(target, { childList: true, subtree: true, characterData: true });
   });
 
-  mirrorQuickStats();
   renderTodaySummary();
   renderTodayEvents();
 }
 
 function initActivityLog() {
-  const today = new Date().toDateString();
-
   return activityApi.subscribe((entries) => {
     elements.activityLogList.innerHTML = "";
     if (!entries) return;
@@ -279,16 +268,6 @@ function initActivityLog() {
       elements.activityLogList.appendChild(li);
     });
 
-    const focusToday = sorted.filter((entry) => {
-      const sameDay = new Date(entry.createdAt || 0).toDateString() === today;
-      return (
-        String(entry.message || "")
-          .toLowerCase()
-          .includes("focus") && sameDay
-      );
-    }).length;
-
-    mirrorQuickStats({ focusToday });
   });
 }
 
