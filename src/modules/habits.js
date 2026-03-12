@@ -9,6 +9,23 @@ export function initHabits(elements, notifyError) {
     }
   }
 
+  async function onCreateHabit() {
+    try {
+      await createHabit({
+        title: elements.habitInput.value,
+        dayOfWeek: Number(elements.habitDayInput.value),
+        time: elements.habitTimeInput.value || "09:00",
+        condition: elements.habitConditionInput.value,
+      });
+      elements.habitInput.value = "";
+      elements.habitConditionInput.value = "";
+    } catch (error) {
+      notifyError(error, "Failed to create habit");
+    }
+  }
+
+  elements.addHabitBtn.addEventListener("click", onCreateHabit);
+
   return subscribeHabits((habits) => {
     elements.habitList.innerHTML = "";
     if (!habits) return;

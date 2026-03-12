@@ -98,11 +98,27 @@ export function initTasks(elements, notifyError) {
     }
   }
 
+  async function addDailyItem() {
+    try {
+      await createDailyTask({
+        title: elements.dailyTaskInput.value,
+        time: elements.dailyTaskTimeInput.value || "09:00",
+        condition: elements.dailyTaskConditionInput.value,
+      });
+      elements.dailyTaskInput.value = "";
+      elements.dailyTaskConditionInput.value = "";
+    } catch (error) {
+      notifyError(error, "Failed to create daily task");
+    }
+  }
+
   async function editTask(taskId, task) {
     const title = prompt("Edit task title:", task.title || "");
     if (title === null) return;
     const description = prompt("Edit task description:", task.description || "");
     if (description === null) return;
+    const condition = prompt("Edit condition:", task.condition || "");
+    if (condition === null) return;
 
     try {
       await updateTask(taskId, {
@@ -133,7 +149,7 @@ export function initTasks(elements, notifyError) {
       rows.forEach(([id, task]) => {
         const li = document.createElement("li");
         const title = document.createElement("span");
-        title.textContent = task.title;
+        title.textContent = `${task.title} (${task.schedule?.time || "--:--"})${task.condition ? ` • ${task.condition}` : ""}`;
         li.appendChild(title);
         const isDoneToday = task.lastCompleted === today;
         if (isDoneToday) completedCount += 1;
@@ -195,6 +211,7 @@ export function initTasks(elements, notifyError) {
   }
 
   elements.addTaskBtn.addEventListener("click", addTask);
+  elements.addDailyTaskBtn.addEventListener("click", addDailyItem);
 
   return [loadDailyTasks(), loadTasks()];
 }

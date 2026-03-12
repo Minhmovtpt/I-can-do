@@ -5,6 +5,8 @@ import { initTasks } from "../modules/tasks.js";
 import { initHabits } from "../modules/habits.js";
 import { initFinance } from "../modules/finance.js";
 import { initCalendar } from "../modules/calendar.js";
+import { initFocus } from "../modules/focus.js";
+import { initNotes } from "../modules/notes.js";
 
 const elements = {
   atk: document.getElementById("atk"),
@@ -40,6 +42,12 @@ const elements = {
   sidebarNav: document.getElementById("sidebarNav"),
   navButtons: document.querySelectorAll(".nav-btn"),
   mainViews: document.querySelectorAll(".main-view"),
+  calendarTabs: document.getElementById("calendarTabs"),
+  calendarModes: document.querySelectorAll(".calendar-mode"),
+  dailyTaskInput: document.getElementById("dailyTaskInput"),
+  dailyTaskTimeInput: document.getElementById("dailyTaskTimeInput"),
+  dailyTaskConditionInput: document.getElementById("dailyTaskConditionInput"),
+  addDailyTaskBtn: document.getElementById("addDailyTaskBtn"),
   dailyTaskList: document.getElementById("dailyTaskList"),
   dailyProgressText: document.getElementById("dailyProgressText"),
   taskInput: document.getElementById("taskInput"),
@@ -94,6 +102,16 @@ function switchMainView(viewName) {
   });
   elements.navButtons.forEach((button) => {
     button.classList.toggle("is-active", button.dataset.view === viewName);
+  });
+}
+
+function switchCalendarMode(mode) {
+  elements.calendarModes.forEach((panel) => {
+    panel.classList.toggle("is-active", panel.dataset.calendarMode === mode);
+  });
+
+  elements.calendarTabs?.querySelectorAll("button").forEach((btn) => {
+    btn.classList.toggle("is-active", btn.dataset.calendarMode === mode);
   });
 }
 
