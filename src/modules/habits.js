@@ -1,4 +1,9 @@
-import { completeHabit, subscribeHabits } from "../services/habitService.js";
+import {
+  completeHabit,
+  createHabit,
+  deleteHabit,
+  subscribeHabits,
+} from "../services/habitService.js";
 
 export function initHabits(elements, notifyError) {
   async function onCompleteHabit(habitId, habit) {
@@ -35,7 +40,7 @@ export function initHabits(elements, notifyError) {
       const row = document.createElement("div");
       row.className = "item-actions";
       const title = document.createElement("span");
-      title.textContent = `${habit.title} (streak: ${habit.streak || 0})`;
+      title.textContent = `${habit.title} (streak: ${habit.streak || 0}) • D${habit.schedule?.dayOfWeek ?? "?"} ${habit.schedule?.time || ""}${habit.condition ? ` • ${habit.condition}` : ""}`;
       const tick = document.createElement("input");
       tick.type = "checkbox";
       tick.className = "habit-tick";
@@ -43,8 +48,17 @@ export function initHabits(elements, notifyError) {
       tick.addEventListener("change", () => {
         if (tick.checked) onCompleteHabit(id, habit);
       });
+
+      const remove = document.createElement("button");
+      remove.className = "btn-danger";
+      remove.textContent = "Delete";
+      remove.addEventListener("click", () =>
+        deleteHabit(id).catch((e) => notifyError(e, "Failed to delete habit")),
+      );
+
       row.appendChild(title);
       row.appendChild(tick);
+      row.appendChild(remove);
       li.appendChild(row);
       elements.habitList.appendChild(li);
     });
