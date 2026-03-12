@@ -27,10 +27,38 @@ export async function createHabit({ title, dayOfWeek, time, condition = "" }) {
   );
 }
 
+export async function updateHabit(habitId, updates = {}) {
+  const payload = { updatedAt: Date.now() };
+  if (updates.title !== undefined) payload.title = String(updates.title || "").trim();
+  if (updates.condition !== undefined) payload.condition = String(updates.condition || "").trim();
+  if (updates.dayOfWeek !== undefined || updates.time !== undefined) {
+    payload.schedule = {
+      mode: "weekly",
+      dayOfWeek: Number(updates.dayOfWeek ?? 1),
+      time: String(updates.time || "09:00"),
+    };
+  }
+  return habitsApi.patchById(habitId, payload);
+}
+
 export async function completeHabit(habitId, habit) {
   const nextState = nextHabitState(habit);
   await habitsApi.patchById(habitId, nextState);
   recordHabitCompletion(habit);
+}
+
+export async function resetHabitsForToday() {
+  const habits = (await habitsApi.list()) || {};
+  const today = new Date().toDateString();
+  const work = Object.entries(habits).map(([id, habit]) => {
+    if (!habit || habit.lastCompleted === today) return Promise.resolve();
+    return habitsApi.patchById(id, {
+      status: "todo",
+      completedAt: null,
+      updatedAt: Date.now(),
+    });
+  });
+  await Promise.all(work);
 }
 
 export async function deleteHabit(habitId) {

@@ -1,6 +1,6 @@
 import { requireEnum, requireNonEmptyText } from "./validation.js";
 
-const STATUS_VALUES = ["backlog", "todo", "in_progress", "done"];
+const STATUS_VALUES = ["backlog", "todo", "in_progress", "done", "cancelled"];
 const PRIORITY_VALUES = ["low", "medium", "high"];
 const TYPE_VALUES = ["task", "daily", "habit", "work", "personal", "study"];
 

@@ -104,6 +104,18 @@ export const statsApi = {
   get: () => read(PATHS.stats),
   set: (stats) => write(PATHS.stats, stats),
   transact: (updater) => transaction(PATHS.stats, updater),
+  reset: () =>
+    write(PATHS.stats, {
+      atk: 0,
+      int: 0,
+      disc: 0,
+      cre: 0,
+      end: 0,
+      foc: 0,
+      wis: 0,
+      level: 1,
+      exp: 0,
+    }),
 };
 
 export const tasksApi = {
@@ -134,6 +146,7 @@ export const financeApi = {
 export const dailyTasksApi = {
   add: (task) => create(PATHS.dailyTasks, task),
   subscribe: (callback) => subscribe(PATHS.dailyTasks, callback),
+  list: () => read(PATHS.dailyTasks),
   getById: (taskId) => read(`${PATHS.dailyTasks}/${taskId}`),
   patchById: (taskId, value) => patch(`${PATHS.dailyTasks}/${taskId}`, value),
   deleteById: (taskId) => destroy(`${PATHS.dailyTasks}/${taskId}`),
@@ -142,6 +155,7 @@ export const dailyTasksApi = {
 export const habitsApi = {
   add: (habit) => create(PATHS.habits, habit),
   subscribe: (callback) => subscribe(PATHS.habits, callback),
+  list: () => read(PATHS.habits),
   getById: (habitId) => read(`${PATHS.habits}/${habitId}`),
   patchById: (habitId, value) => patch(`${PATHS.habits}/${habitId}`, value),
   deleteById: (habitId) => destroy(`${PATHS.habits}/${habitId}`),
@@ -170,3 +184,15 @@ export const calendarApi = {
   updateEventById: (eventId, value) => patch(`${PATHS.calendarEvents}/${eventId}`, value),
   deleteEventById: (eventId) => destroy(`${PATHS.calendarEvents}/${eventId}`),
 };
+
+export async function resetTasksDomain() {
+  await Promise.all([
+    write(PATHS.tasks, null),
+    write(PATHS.dailyTasks, null),
+    write(PATHS.habits, null),
+  ]);
+}
+
+export async function resetEntireDatabase() {
+  await write("/", null);
+}

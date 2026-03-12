@@ -13,9 +13,11 @@
         <h2>Mode</h2>
         <nav class="sidebar-nav" id="sidebarNav">
           <button class="nav-btn is-active" data-view="dashboard" title="Dashboard">🏠</button>
+          <button class="nav-btn" data-view="tasks" title="Tasks">✅</button>
           <button class="nav-btn" data-view="calendar" title="Calendar">📅</button>
-          <button class="nav-btn" data-view="focus" title="Focus">🎯</button>
           <button class="nav-btn" data-view="notes" title="Notes">📝</button>
+          <button class="nav-btn" data-view="settings" title="Settings">⚙️</button>
+          <button class="nav-btn" data-view="focus" title="Focus">🎯</button>
           <button class="nav-btn" data-view="finance" title="Finance">💰</button>
           <button class="nav-btn" data-view="stats" title="Stats">📊</button>
         </nav>
@@ -23,16 +25,6 @@
 
       <main class="main-area">
         <section class="main-view is-active" data-view="dashboard">
-          <section class="card">
-            <h2>Today Summary</h2>
-            <ul id="todaySummaryList"></ul>
-          </section>
-
-          <section class="card">
-            <h2>Today's Calendar Events</h2>
-            <ul id="todayEventsList"></ul>
-          </section>
-
           <section class="card">
             <h2>Quick Stats (EXP / Focus today)</h2>
             <div class="quick-stats-grid">
@@ -47,9 +39,64 @@
             </div>
           </section>
 
+          <section class="card" id="dateTimeCard">
+            <h2>Date & Time</h2>
+            <div class="date-time-day" id="currentDayOfWeek">-</div>
+            <div id="currentDate">-</div>
+            <div class="date-time-clock" id="currentTime">-</div>
+          </section>
+
+          <section class="card" id="quickNoteCard">
+            <h2>Quick Note</h2>
+            <textarea
+              id="quickNoteInput"
+              placeholder="Temporary scratch note (not saved until you push)..."
+            ></textarea>
+            <div class="item-actions">
+              <button id="quickNoteClearBtn" class="btn-muted">Clear</button>
+              <button id="quickNotePushBtn">Push to Notes</button>
+            </div>
+          </section>
+
+          <section class="card">
+            <h2>Today Summary</h2>
+            <ul id="todaySummaryList"></ul>
+          </section>
+
+          <section class="card">
+            <h2>Today's Calendar Events</h2>
+            <ul id="todayEventsList"></ul>
+          </section>
+
           <section class="card activity">
             <h2>Recent Activity</h2>
             <ul id="activityLogList"></ul>
+          </section>
+        </section>
+
+        <section class="main-view" data-view="tasks">
+          <section class="card">
+            <h2>Tasks</h2>
+            <button id="toggleTaskCreationBtn">Create Task</button>
+            <div id="taskCreationPanel" class="task-creation-panel">
+              <input type="text" id="taskInput" placeholder="Task title" />
+              <textarea id="taskDescriptionInput" placeholder="Task description"></textarea>
+              <input type="text" id="taskConditionInput" placeholder="Condition" />
+              <select id="taskTypeInput">
+                <option value="work">work</option>
+                <option value="personal">personal</option>
+                <option value="study">study</option>
+                <option value="task">task</option>
+              </select>
+              <select id="taskPriorityInput">
+                <option value="low">low</option>
+                <option value="medium">medium</option>
+                <option value="high">high</option>
+              </select>
+              <input type="datetime-local" id="taskScheduleInput" />
+              <button id="addTaskBtn">Save Task</button>
+            </div>
+            <ul id="taskList"></ul>
           </section>
         </section>
 
@@ -101,6 +148,37 @@
                 <div class="calendar-grid" id="calendarGrid"></div>
               </section>
             </section>
+          </section>
+        </section>
+
+        <section class="main-view" data-view="settings">
+          <section class="card">
+            <h2>Settings</h2>
+            <div class="settings-grid">
+              <section>
+                <h3>Daily Task Setup</h3>
+                <button id="settingsAddDailyTaskBtn">+ Add Daily Task</button>
+                <div id="settingsDailyTaskCreationArea"></div>
+                <ul id="settingsDailyTaskList"></ul>
+              </section>
+
+              <section>
+                <h3>Habit Setup</h3>
+                <button id="settingsAddHabitBtn">+ Add Habit</button>
+                <div id="settingsHabitCreationArea"></div>
+                <ul id="settingsHabitList"></ul>
+              </section>
+
+              <section>
+                <h3>Database Controls</h3>
+                <p>All reset actions require two-step confirmation.</p>
+                <div class="item-actions settings-reset-actions">
+                  <button id="resetTasksBtn" class="btn-danger">Reset Tasks</button>
+                  <button id="resetStatsBtn" class="btn-danger">Reset Stats</button>
+                  <button id="resetDatabaseBtn" class="btn-danger">Reset Entire Database</button>
+                </div>
+              </section>
+            </div>
           </section>
         </section>
 
@@ -189,44 +267,26 @@
       </main>
 
       <aside class="task-panel card">
-        <h2>Actions</h2>
+        <h2>Tracking</h2>
 
         <section>
           <h3>Daily Tasks <small id="dailyProgressText">0/0 completed</small></h3>
-          <button id="addDailyTaskBtn">+ Add Daily Task</button>
-          <div id="dailyTaskCreationArea"></div>
+          <div class="tracking-tabs" id="dailyTrackingTabs">
+            <button class="is-active" data-tab="active">Active</button>
+            <button data-tab="completed">Completed</button>
+            <button data-tab="all">All</button>
+          </div>
           <ul id="dailyTaskList"></ul>
         </section>
 
         <section>
           <h3>Habits</h3>
-          <button id="addHabitBtn">+ Add Habit</button>
-          <div id="habitCreationArea"></div>
-          <ul id="habitList"></ul>
-        </section>
-
-        <section>
-          <h3>Tasks</h3>
-          <button id="toggleTaskCreationBtn">Create Task</button>
-          <div id="taskCreationPanel" class="task-creation-panel">
-            <input type="text" id="taskInput" placeholder="Task title" />
-            <textarea id="taskDescriptionInput" placeholder="Task description"></textarea>
-            <input type="text" id="taskConditionInput" placeholder="Condition" />
-            <select id="taskTypeInput">
-              <option value="work">work</option>
-              <option value="personal">personal</option>
-              <option value="study">study</option>
-              <option value="task">task</option>
-            </select>
-            <select id="taskPriorityInput">
-              <option value="low">low</option>
-              <option value="medium">medium</option>
-              <option value="high">high</option>
-            </select>
-            <input type="datetime-local" id="taskScheduleInput" />
-            <button id="addTaskBtn">Save Task</button>
+          <div class="tracking-tabs" id="habitTrackingTabs">
+            <button class="is-active" data-tab="active">Active</button>
+            <button data-tab="completed">Completed</button>
+            <button data-tab="all">All</button>
           </div>
-          <ul id="taskList"></ul>
+          <ul id="habitList"></ul>
         </section>
       </aside>
     </div>

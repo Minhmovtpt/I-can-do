@@ -10,4 +10,6 @@ export {
   focusApi,
   activityApi,
   calendarApi,
+  resetTasksDomain,
+  resetEntireDatabase,
 } from "./firebaseService.js";

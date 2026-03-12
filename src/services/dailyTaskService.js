@@ -14,6 +14,16 @@ export async function createDailyTask({ title, time, condition = "" }) {
   );
 }
 
+export async function updateDailyTask(taskId, updates = {}) {
+  const payload = { updatedAt: Date.now() };
+  if (updates.title !== undefined) payload.title = String(updates.title || "").trim();
+  if (updates.condition !== undefined) payload.condition = String(updates.condition || "").trim();
+  if (updates.time !== undefined) {
+    payload.schedule = { mode: "daily", time: String(updates.time || "09:00") };
+  }
+  return dailyTasksApi.patchById(taskId, payload);
+}
+
 export async function completeDailyTask(taskId) {
   const task = await dailyTasksApi.getById(taskId);
   if (!task) return;
@@ -30,6 +40,20 @@ export async function completeDailyTask(taskId) {
     updatedAt: Date.now(),
   });
   recordDailyTaskCompletion(task);
+}
+
+export async function resetDailyTasksForToday() {
+  const tasks = (await dailyTasksApi.list()) || {};
+  const today = new Date().toDateString();
+  const work = Object.entries(tasks).map(([id, task]) => {
+    if (!task || task.lastCompleted === today) return Promise.resolve();
+    return dailyTasksApi.patchById(id, {
+      status: "todo",
+      completedAt: null,
+      updatedAt: Date.now(),
+    });
+  });
+  await Promise.all(work);
 }
 
 export async function deleteDailyTask(taskId) {

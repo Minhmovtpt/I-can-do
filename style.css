@@ -271,3 +271,46 @@ button {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+
+.settings-grid {
+  display: grid;
+  gap: 12px;
+}
+.tracking-tabs {
+  display: flex;
+  gap: 6px;
+  margin: 8px 0;
+}
+.tracking-tabs button {
+  width: auto;
+}
+.tracking-tabs button.is-active {
+  background: #364966;
+}
+.work-card-time {
+  margin: 8px 0;
+  font-size: 13px;
+  color: #bac7db;
+}
+.kanban-arrows {
+  display: none;
+  gap: 6px;
+  margin-top: 6px;
+}
+.kanban-arrows button {
+  width: auto;
+}
+.kanban-card:hover .kanban-arrows {
+  display: flex;
+}
+.date-time-day {
+  font-size: 18px;
+  font-weight: 700;
+}
+.date-time-clock {
+  font-size: 24px;
+  font-weight: 700;
+}
+.settings-reset-actions {
+  flex-wrap: wrap;
+}
