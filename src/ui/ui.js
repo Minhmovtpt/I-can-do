@@ -7,6 +7,8 @@ import { initFinance } from "../modules/finance.js";
 import { initCalendar } from "../modules/calendar.js";
 import { initFocus } from "../modules/focus.js";
 import { initNotes } from "../modules/notes.js";
+import { initSettings } from "../modules/settings.js";
+import { createNote } from "../services/noteService.js";
 
 const elements = {
   atk: document.getElementById("atk"),
@@ -37,6 +39,12 @@ const elements = {
     wis: document.getElementById("quick-wis"),
     levelExp: document.getElementById("quick-level-exp"),
   },
+  currentDayOfWeek: document.getElementById("currentDayOfWeek"),
+  currentDate: document.getElementById("currentDate"),
+  currentTime: document.getElementById("currentTime"),
+  quickNoteInput: document.getElementById("quickNoteInput"),
+  quickNoteClearBtn: document.getElementById("quickNoteClearBtn"),
+  quickNotePushBtn: document.getElementById("quickNotePushBtn"),
   todaySummaryList: document.getElementById("todaySummaryList"),
   todayEventsList: document.getElementById("todayEventsList"),
   sidebarNav: document.getElementById("sidebarNav"),
@@ -44,13 +52,20 @@ const elements = {
   mainViews: document.querySelectorAll(".main-view"),
   calendarTabs: document.getElementById("calendarTabs"),
   calendarModes: document.querySelectorAll(".calendar-mode"),
-  dailyTaskCreationArea: document.getElementById("dailyTaskCreationArea"),
-  addDailyTaskBtn: document.getElementById("addDailyTaskBtn"),
   dailyTaskList: document.getElementById("dailyTaskList"),
   dailyProgressText: document.getElementById("dailyProgressText"),
-  habitCreationArea: document.getElementById("habitCreationArea"),
-  addHabitBtn: document.getElementById("addHabitBtn"),
+  dailyTrackingTabs: document.getElementById("dailyTrackingTabs"),
+  habitTrackingTabs: document.getElementById("habitTrackingTabs"),
   habitList: document.getElementById("habitList"),
+  settingsAddDailyTaskBtn: document.getElementById("settingsAddDailyTaskBtn"),
+  settingsDailyTaskCreationArea: document.getElementById("settingsDailyTaskCreationArea"),
+  settingsDailyTaskList: document.getElementById("settingsDailyTaskList"),
+  settingsAddHabitBtn: document.getElementById("settingsAddHabitBtn"),
+  settingsHabitCreationArea: document.getElementById("settingsHabitCreationArea"),
+  settingsHabitList: document.getElementById("settingsHabitList"),
+  resetTasksBtn: document.getElementById("resetTasksBtn"),
+  resetStatsBtn: document.getElementById("resetStatsBtn"),
+  resetDatabaseBtn: document.getElementById("resetDatabaseBtn"),
   taskInput: document.getElementById("taskInput"),
   taskDescriptionInput: document.getElementById("taskDescriptionInput"),
   taskConditionInput: document.getElementById("taskConditionInput"),
@@ -141,6 +156,37 @@ function mirrorQuickStats(extra = {}) {
 
   const focusToday = extra.focusToday ?? 0;
   elements.quickStats.levelExp.textContent = `${elements.level.textContent} / ${elements.exp.textContent} • Focus ${focusToday}`;
+}
+
+function renderDateTime() {
+  const now = new Date();
+  elements.currentDayOfWeek.textContent = now.toLocaleDateString(undefined, { weekday: "long" });
+  elements.currentDate.textContent = now.toISOString().slice(0, 10);
+  elements.currentTime.textContent = now.toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function initDateTime() {
+  renderDateTime();
+  setInterval(renderDateTime, 60 * 1000);
+}
+
+function initQuickNote() {
+  elements.quickNoteClearBtn.addEventListener("click", () => {
+    elements.quickNoteInput.value = "";
+  });
+
+  elements.quickNotePushBtn.addEventListener("click", async () => {
+    if (!elements.quickNoteInput.value.trim()) return;
+    try {
+      await createNote(elements.quickNoteInput.value);
+      elements.quickNoteInput.value = "";
+    } catch (error) {
+      notifyError(error, "Failed to push quick note");
+    }
+  });
 }
 
 function renderTodaySummary() {
@@ -252,10 +298,13 @@ function init() {
   initStats(elements);
   initTasks(elements, notifyError);
   initHabits(elements, notifyError);
+  initSettings(elements, notifyError);
   initNotes(elements, notifyError);
   initFinance(elements, notifyError);
   initFocus(elements, notifyError);
   initCalendar(elements, notifyError);
+  initQuickNote();
+  initDateTime();
   initActivityLog();
   observeDashboardData();
 }

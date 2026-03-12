@@ -1,8 +1,7 @@
 import {
-  createDailyTask,
   completeDailyTask,
-  deleteDailyTask,
   subscribeDailyTasks,
+  resetDailyTasksForToday,
 } from "../services/dailyTaskService.js";
 import {
   createTask,
@@ -17,6 +16,7 @@ const STATUS_LABELS = {
   todo: "Todo",
   in_progress: "In Progress",
   done: "Done",
+  cancelled: "Cancelled",
 };
 
 const KANBAN_COLUMNS = [
@@ -26,6 +26,8 @@ const KANBAN_COLUMNS = [
   { key: "done", elementKey: "kanbanDone" },
 ];
 
+const STATUS_SEQUENCE = ["backlog", "todo", "in_progress", "done"];
+
 function isBoardTask(task) {
   return task && task.type !== "daily" && task.type !== "habit";
 }
@@ -34,127 +36,130 @@ function formatDate(ts) {
   return ts ? new Date(ts).toLocaleString() : "-";
 }
 
-function takeCreationSlot(owner) {
-  if (window.__activeCreationCardOwner && window.__activeCreationCardOwner !== owner) {
-    return false;
-  }
-  window.__activeCreationCardOwner = owner;
-  return true;
+function statusLabel(status, completed) {
+  if (status) return status;
+  return completed ? "done" : "backlog";
 }
 
-function releaseCreationSlot(owner) {
-  if (window.__activeCreationCardOwner === owner) {
-    window.__activeCreationCardOwner = null;
-  }
-}
-
-function makeCard({ title, description = "", metadata = [], actions = [] }) {
+function makeTrackingCard({ title, time, isDoneToday, onComplete }) {
   const card = document.createElement("article");
   card.className = "work-card";
 
   const heading = document.createElement("h4");
   heading.className = "work-card-title";
   heading.textContent = title;
-  card.appendChild(heading);
 
-  if (description) {
-    const desc = document.createElement("p");
-    desc.className = "work-card-description";
-    desc.textContent = description;
-    card.appendChild(desc);
-  }
+  const timeText = document.createElement("p");
+  timeText.className = "work-card-time";
+  timeText.textContent = time || "--:--";
 
-  const meta = document.createElement("div");
-  meta.className = "work-card-meta";
-  metadata.forEach((item) => {
-    const tag = document.createElement("span");
-    tag.textContent = item;
-    meta.appendChild(tag);
-  });
-  card.appendChild(meta);
+  const actions = document.createElement("div");
+  actions.className = "item-actions";
 
-  if (actions.length) {
-    const actionWrap = document.createElement("div");
-    actionWrap.className = "item-actions";
-    actions.forEach(({ label, onClick, className, type = "button" }) => {
-      const btn = document.createElement("button");
-      btn.type = type;
-      btn.textContent = label;
-      btn.className = className || "";
-      btn.addEventListener("click", onClick);
-      actionWrap.appendChild(btn);
-    });
-    card.appendChild(actionWrap);
-  }
+  const completeBtn = document.createElement("button");
+  completeBtn.textContent = isDoneToday ? "Completed" : "Complete";
+  completeBtn.className = isDoneToday ? "btn-muted" : "";
+  completeBtn.addEventListener("click", onComplete);
 
+  actions.appendChild(completeBtn);
+  card.append(heading, timeText, actions);
   return card;
 }
 
-function statusLabel(status, completed) {
-  if (status) return status;
-  return completed ? "done" : "backlog";
+function makeBoardCard({ task, taskId, onMove }) {
+  const status = statusLabel(task.status, task.completed);
+  const card = document.createElement("article");
+  card.className = "work-card kanban-card";
+  card.draggable = true;
+  card.dataset.taskId = taskId;
+
+  const heading = document.createElement("h4");
+  heading.className = "work-card-title";
+  heading.textContent = task.title;
+
+  const statusMeta = document.createElement("div");
+  statusMeta.className = "work-card-meta";
+  const badge = document.createElement("span");
+  badge.textContent = `[${STATUS_LABELS[status] || status}]`;
+  statusMeta.appendChild(badge);
+
+  const created = document.createElement("p");
+  created.className = "work-card-time";
+  created.textContent = `Created: ${formatDate(task.createdAt)}`;
+
+  const arrows = document.createElement("div");
+  arrows.className = "kanban-arrows";
+
+  const prev = document.createElement("button");
+  prev.textContent = "←";
+  prev.type = "button";
+  prev.className = "btn-muted";
+
+  const next = document.createElement("button");
+  next.textContent = "→";
+  next.type = "button";
+  next.className = "btn-muted";
+
+  const index = STATUS_SEQUENCE.indexOf(status);
+  prev.disabled = index <= 0;
+  next.disabled = index === -1 || index >= STATUS_SEQUENCE.length - 1;
+
+  prev.addEventListener("click", () => {
+    if (index <= 0) return;
+    onMove(STATUS_SEQUENCE[index - 1]);
+  });
+  next.addEventListener("click", () => {
+    if (index === -1 || index >= STATUS_SEQUENCE.length - 1) return;
+    onMove(STATUS_SEQUENCE[index + 1]);
+  });
+
+  arrows.append(prev, next);
+  card.append(heading, statusMeta, created, arrows);
+
+  return card;
 }
 
 export function initTasks(elements, notifyError) {
   let taskMap = {};
   let dailyTasksById = {};
   let boardDropBound = false;
-  let isDailyCreationOpen = false;
+  let activeDailyTab = "active";
 
-  function renderDailyCreationCard() {
-    elements.dailyTaskCreationArea.innerHTML = "";
+  function updateTabState(tabsRoot, activeTab) {
+    tabsRoot.querySelectorAll("button[data-tab]").forEach((btn) => {
+      btn.classList.toggle("is-active", btn.dataset.tab === activeTab);
+    });
+  }
 
-    if (!isDailyCreationOpen) return;
+  function renderDailyTracking() {
+    elements.dailyTaskList.innerHTML = "";
+    const rows = Object.entries(dailyTasksById);
+    const today = new Date().toDateString();
+    let completedCount = 0;
 
-    const card = document.createElement("article");
-    card.className = "work-card creation-card";
+    rows.forEach(([id, task]) => {
+      const isDoneToday = task.lastCompleted === today;
+      if (isDoneToday) completedCount += 1;
 
-    const title = document.createElement("input");
-    title.type = "text";
-    title.placeholder = "Daily task title";
+      const hiddenByTab =
+        (activeDailyTab === "active" && isDoneToday) ||
+        (activeDailyTab === "completed" && !isDoneToday);
+      if (hiddenByTab) return;
 
-    const time = document.createElement("input");
-    time.type = "time";
-    time.value = "09:00";
-
-    const desc = document.createElement("input");
-    desc.type = "text";
-    desc.placeholder = "Description optional";
-
-    const actions = document.createElement("div");
-    actions.className = "item-actions";
-
-    const createBtn = document.createElement("button");
-    createBtn.textContent = "Create";
-    createBtn.addEventListener("click", async () => {
-      try {
-        await createDailyTask({
-          title: title.value,
-          time: time.value || "09:00",
-          condition: desc.value,
-        });
-        isDailyCreationOpen = false;
-        releaseCreationSlot("daily");
-        renderDailyCreationCard();
-      } catch (error) {
-        notifyError(error, "Failed to create daily task");
-      }
+      const li = document.createElement("li");
+      li.appendChild(
+        makeTrackingCard({
+          title: task.title,
+          time: task.schedule?.time,
+          isDoneToday,
+          onComplete: () =>
+            completeDailyTask(id).catch((e) => notifyError(e, "Failed to complete daily task")),
+        }),
+      );
+      elements.dailyTaskList.appendChild(li);
     });
 
-    const cancelBtn = document.createElement("button");
-    cancelBtn.textContent = "Cancel";
-    cancelBtn.className = "btn-muted";
-    cancelBtn.addEventListener("click", () => {
-      isDailyCreationOpen = false;
-      releaseCreationSlot("daily");
-      renderDailyCreationCard();
-    });
-
-    actions.appendChild(createBtn);
-    actions.appendChild(cancelBtn);
-    card.append(title, time, desc, actions);
-    elements.dailyTaskCreationArea.appendChild(card);
-    title.focus();
+    elements.dailyProgressText.textContent = `${completedCount}/${rows.length} completed`;
   }
 
   function renderKanban(tasks) {
@@ -175,17 +180,17 @@ export function initTasks(elements, notifyError) {
       if (!bucket) return;
 
       const li = document.createElement("li");
-      const card = makeCard({
-        title: task.title,
-        description: task.description,
-        metadata: [
-          `Status: ${STATUS_LABELS[status] || status}`,
-          `Created: ${formatDate(task.createdAt)}`,
-        ],
+      const card = makeBoardCard({
+        task,
+        taskId: id,
+        onMove: async (nextStatus) => {
+          try {
+            await updateTask(id, { status: nextStatus });
+          } catch (error) {
+            notifyError(error, "Failed to update task status");
+          }
+        },
       });
-      card.draggable = true;
-      card.dataset.taskId = id;
-      card.classList.add("kanban-card");
       card.addEventListener("dragstart", (event) => {
         event.dataTransfer.setData("text/plain", id);
       });
@@ -263,49 +268,7 @@ export function initTasks(elements, notifyError) {
   function loadDailyTasks() {
     return subscribeDailyTasks((tasks) => {
       dailyTasksById = tasks || {};
-      elements.dailyTaskList.innerHTML = "";
-      const rows = Object.entries(dailyTasksById);
-      let completedCount = 0;
-      const today = new Date().toDateString();
-
-      rows.forEach(([id, task]) => {
-        const isDoneToday = task.lastCompleted === today;
-        if (isDoneToday) completedCount += 1;
-
-        const li = document.createElement("li");
-        li.appendChild(
-          makeCard({
-            title: task.title,
-            description: task.condition || "",
-            metadata: [
-              `Schedule: daily ${task.schedule?.time || "--:--"}`,
-              `Created: ${formatDate(task.createdAt)}`,
-              `Completed: ${task.completedAt ? formatDate(task.completedAt) : "-"}`,
-            ],
-            actions: [
-              {
-                label: "Complete",
-                className: isDoneToday ? "btn-muted" : "",
-                onClick: () =>
-                  completeDailyTask(id).catch((e) =>
-                    notifyError(e, "Failed to complete daily task"),
-                  ),
-              },
-              {
-                label: "Delete",
-                className: "btn-danger",
-                onClick: () =>
-                  deleteDailyTask(id).catch((e) =>
-                    notifyError(e, "Failed to delete daily task"),
-                  ),
-              },
-            ],
-          }),
-        );
-        elements.dailyTaskList.appendChild(li);
-      });
-
-      elements.dailyProgressText.textContent = `${completedCount}/${rows.length} completed`;
+      renderDailyTracking();
     });
   }
 
@@ -325,64 +288,106 @@ export function initTasks(elements, notifyError) {
         .forEach(([id, task]) => {
           const status = statusLabel(task.status, task.completed);
           const li = document.createElement("li");
-          li.appendChild(
-            makeCard({
-              title: task.title,
-              description: task.description,
-              metadata: [
-                `Status: ${STATUS_LABELS[status] || status}`,
-                `Created: ${formatDate(task.createdAt)}`,
-                `Completed: ${task.completedAt ? formatDate(task.completedAt) : "-"}`,
-              ],
-              actions: [
-                {
-                  label: "Complete",
-                  className: task.completed ? "btn-muted" : "",
-                  onClick: () => completeTask(id, task),
-                },
-                { label: "Edit", onClick: () => editTask(id, task) },
-                {
-                  label: "Delete",
-                  className: "btn-danger",
-                  onClick: () =>
-                    deleteTask(id).catch((e) => notifyError(e, "Failed to delete task")),
-                },
-              ],
-            }),
-          );
+
+          const card = document.createElement("article");
+          card.className = "work-card";
+          const h = document.createElement("h4");
+          h.className = "work-card-title";
+          h.textContent = task.title;
+          const meta = document.createElement("div");
+          meta.className = "work-card-meta";
+          [
+            `Status: ${STATUS_LABELS[status] || status}`,
+            `Created: ${formatDate(task.createdAt)}`,
+            `Completed: ${task.completedAt ? formatDate(task.completedAt) : "-"}`,
+          ].forEach((m) => {
+            const s = document.createElement("span");
+            s.textContent = m;
+            meta.appendChild(s);
+          });
+
+          const actions = document.createElement("div");
+          actions.className = "item-actions";
+          [
+            {
+              label: "Complete",
+              className: task.completed ? "btn-muted" : "",
+              onClick: () => completeTask(id, task),
+            },
+            { label: "Edit", onClick: () => editTask(id, task) },
+            {
+              label: "Delete",
+              className: "btn-danger",
+              onClick: () => deleteTask(id).catch((e) => notifyError(e, "Failed to delete task")),
+            },
+            {
+              label: "Cancel",
+              className: "btn-muted",
+              onClick: () =>
+                updateTask(id, { status: "cancelled" }).catch((e) =>
+                  notifyError(e, "Failed to cancel task"),
+                ),
+            },
+          ].forEach(({ label, className, onClick }) => {
+            const btn = document.createElement("button");
+            btn.textContent = label;
+            btn.className = className || "";
+            btn.addEventListener("click", onClick);
+            actions.appendChild(btn);
+          });
+
+          card.append(h, meta, actions);
+          li.appendChild(card);
           elements.taskList.appendChild(li);
         });
 
       const grouped = {
-        backlog: taskRows
-          .filter(([, task]) => statusLabel(task.status, task.completed) === "backlog")
-          .sort(([, a], [, b]) => (b.createdAt || 0) - (a.createdAt || 0)),
-        todo: taskRows
-          .filter(([, task]) => statusLabel(task.status, task.completed) === "todo")
-          .sort(([, a], [, b]) => (a.createdAt || 0) - (b.createdAt || 0)),
-        in_progress: taskRows
-          .filter(([, task]) => statusLabel(task.status, task.completed) === "in_progress")
-          .sort(([, a], [, b]) => (a.createdAt || 0) - (b.createdAt || 0)),
-        done: taskRows
-          .filter(([, task]) => statusLabel(task.status, task.completed) === "done")
-          .sort(([, a], [, b]) => (a.createdAt || 0) - (b.createdAt || 0)),
+        backlog: taskRows.filter(
+          ([, task]) => statusLabel(task.status, task.completed) === "backlog",
+        ),
+        todo: taskRows.filter(([, task]) => statusLabel(task.status, task.completed) === "todo"),
+        in_progress: taskRows.filter(
+          ([, task]) => statusLabel(task.status, task.completed) === "in_progress",
+        ),
+        done: taskRows.filter(([, task]) => statusLabel(task.status, task.completed) === "done"),
       };
 
       renderKanban(Object.fromEntries(Object.values(grouped).flat()));
     });
   }
 
-  elements.addTaskBtn.addEventListener("click", addTask);
-  elements.addDailyTaskBtn.addEventListener("click", () => {
-    if (!isDailyCreationOpen && !takeCreationSlot("daily")) return;
-    if (isDailyCreationOpen) {
-      isDailyCreationOpen = false;
-      releaseCreationSlot("daily");
-    } else {
-      isDailyCreationOpen = true;
+  function scheduleDailyReset() {
+    async function runReset() {
+      try {
+        await resetDailyTasksForToday();
+      } catch (error) {
+        notifyError(error, "Failed to reset daily tracking");
+      }
     }
-    renderDailyCreationCard();
+
+    const now = new Date();
+    const nextMidnight = new Date(now);
+    nextMidnight.setHours(24, 0, 0, 0);
+    const timeout = nextMidnight.getTime() - now.getTime();
+
+    setTimeout(() => {
+      runReset();
+      setInterval(runReset, 24 * 60 * 60 * 1000);
+    }, timeout);
+
+    runReset();
+  }
+
+  elements.addTaskBtn.addEventListener("click", addTask);
+  elements.dailyTrackingTabs.addEventListener("click", (event) => {
+    const button = event.target.closest("button[data-tab]");
+    if (!button) return;
+    activeDailyTab = button.dataset.tab;
+    updateTabState(elements.dailyTrackingTabs, activeDailyTab);
+    renderDailyTracking();
   });
+
+  scheduleDailyReset();
 
   return [loadDailyTasks(), loadTasks()];
 }
