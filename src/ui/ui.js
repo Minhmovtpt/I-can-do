@@ -50,8 +50,15 @@ const elements = {
   addDailyTaskBtn: document.getElementById("addDailyTaskBtn"),
   dailyTaskList: document.getElementById("dailyTaskList"),
   dailyProgressText: document.getElementById("dailyProgressText"),
+  habitInput: document.getElementById("habitInput"),
+  habitDayInput: document.getElementById("habitDayInput"),
+  habitTimeInput: document.getElementById("habitTimeInput"),
+  habitConditionInput: document.getElementById("habitConditionInput"),
+  addHabitBtn: document.getElementById("addHabitBtn"),
+  habitList: document.getElementById("habitList"),
   taskInput: document.getElementById("taskInput"),
   taskDescriptionInput: document.getElementById("taskDescriptionInput"),
+  taskConditionInput: document.getElementById("taskConditionInput"),
   taskTypeInput: document.getElementById("taskTypeInput"),
   taskPriorityInput: document.getElementById("taskPriorityInput"),
   taskScheduleInput: document.getElementById("taskScheduleInput"),
@@ -63,7 +70,13 @@ const elements = {
   kanbanProgress: document.getElementById("kanban-progress"),
   kanbanDone: document.getElementById("kanban-done"),
   kanbanCanceled: document.getElementById("kanban-canceled"),
-  habitList: document.getElementById("habitList"),
+  focusTimer: document.getElementById("focusTimer"),
+  focusButtons: document.querySelectorAll(".focus-controls button[data-duration]"),
+  cancelFocusBtn: document.getElementById("cancelFocusBtn"),
+  focusSessionList: document.getElementById("focusSessionList"),
+  noteInput: document.getElementById("noteInput"),
+  saveNoteBtn: document.getElementById("saveNoteBtn"),
+  notesList: document.getElementById("notesList"),
   amountInput: document.getElementById("amountInput"),
   typeInput: document.getElementById("typeInput"),
   isRecurringInput: document.getElementById("isRecurringInput"),
@@ -124,6 +137,12 @@ function initNavigation() {
 
   elements.toggleTaskCreationBtn.addEventListener("click", () => {
     elements.taskCreationPanel.classList.toggle("is-open");
+  });
+
+  elements.calendarTabs?.addEventListener("click", (event) => {
+    const tab = event.target.closest("button[data-calendar-mode]");
+    if (!tab) return;
+    switchCalendarMode(tab.dataset.calendarMode);
   });
 }
 
@@ -187,6 +206,7 @@ function observeDashboardData() {
     elements.dailyTaskList,
     elements.taskList,
     elements.habitList,
+    elements.focusSessionList,
     elements.calendarGrid,
     elements.level,
     elements.exp,
@@ -224,10 +244,9 @@ function initActivityLog() {
     const focusToday = sorted.filter((entry) => {
       const sameDay = new Date(entry.createdAt || 0).toDateString() === today;
       return (
-        sameDay &&
         String(entry.message || "")
           .toLowerCase()
-          .includes("focus")
+          .includes("focus") && sameDay
       );
     }).length;
 
@@ -241,7 +260,9 @@ function init() {
   initStats(elements);
   initTasks(elements, notifyError);
   initHabits(elements, notifyError);
+  initNotes(elements, notifyError);
   initFinance(elements, notifyError);
+  initFocus(elements, notifyError);
   initCalendar(elements, notifyError);
   initActivityLog();
   observeDashboardData();
