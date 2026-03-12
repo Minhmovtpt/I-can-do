@@ -27,6 +27,21 @@ const elements = {
     foc: document.getElementById("bar-foc"),
     wis: document.getElementById("bar-wis"),
   },
+  quickStats: {
+    atk: document.getElementById("quick-atk"),
+    int: document.getElementById("quick-int"),
+    disc: document.getElementById("quick-disc"),
+    cre: document.getElementById("quick-cre"),
+    end: document.getElementById("quick-end"),
+    foc: document.getElementById("quick-foc"),
+    wis: document.getElementById("quick-wis"),
+    levelExp: document.getElementById("quick-level-exp"),
+  },
+  todaySummaryList: document.getElementById("todaySummaryList"),
+  todayEventsList: document.getElementById("todayEventsList"),
+  sidebarNav: document.getElementById("sidebarNav"),
+  navButtons: document.querySelectorAll(".nav-btn"),
+  mainViews: document.querySelectorAll(".main-view"),
   dailyTaskList: document.getElementById("dailyTaskList"),
   taskInput: document.getElementById("taskInput"),
   taskDescriptionInput: document.getElementById("taskDescriptionInput"),
@@ -67,6 +82,112 @@ function notifyError(error, fallback = "Operation failed") {
   alert(message);
 }
 
+function switchMainView(viewName) {
+  elements.mainViews.forEach((view) => {
+    view.classList.toggle("is-active", view.dataset.view === viewName);
+  });
+
+  elements.navButtons.forEach((button) => {
+    button.classList.toggle("is-active", button.dataset.view === viewName);
+  });
+}
+
+function initNavigation() {
+  elements.sidebarNav.addEventListener("click", (event) => {
+    const button = event.target.closest(".nav-btn");
+    if (!button) return;
+    switchMainView(button.dataset.view);
+  });
+}
+
+function mirrorQuickStats() {
+  const statKeys = ["atk", "int", "disc", "cre", "end", "foc", "wis"];
+  statKeys.forEach((key) => {
+    elements.quickStats[key].textContent = elements[key].textContent;
+  });
+  elements.quickStats.levelExp.textContent = `${elements.level.textContent} / ${elements.exp.textContent}`;
+}
+
+function renderTodaySummary() {
+  const rows = [
+    `Daily tasks: ${elements.dailyTaskList.children.length}`,
+    `Open tasks: ${elements.taskList.querySelectorAll(".item-main:not(.is-completed)").length}`,
+    `Completed tasks: ${elements.taskList.querySelectorAll(".item-main.is-completed").length}`,
+    `Habits tracked: ${elements.habitList.children.length}`,
+    `Focus sessions: ${elements.focusSessionList.children.length}`,
+  ];
+
+  elements.todaySummaryList.innerHTML = "";
+  rows.forEach((row) => {
+    const li = document.createElement("li");
+    li.textContent = row;
+    elements.todaySummaryList.appendChild(li);
+  });
+}
+
+function renderTodayEvents() {
+  const day = new Date().getDate();
+  const calendarDayLabel = Array.from(elements.calendarGrid.querySelectorAll(".calendar-day-label")).find(
+    (label) => Number(label.textContent) === day,
+  );
+
+  elements.todayEventsList.innerHTML = "";
+
+  if (!calendarDayLabel) {
+    const li = document.createElement("li");
+    li.textContent = "No events scheduled for today.";
+    elements.todayEventsList.appendChild(li);
+    return;
+  }
+
+  const dayCell = calendarDayLabel.closest(".calendar-day");
+  const eventButtons = dayCell ? dayCell.querySelectorAll(".calendar-event-btn") : [];
+
+  if (!eventButtons.length) {
+    const li = document.createElement("li");
+    li.textContent = "No events scheduled for today.";
+    elements.todayEventsList.appendChild(li);
+    return;
+  }
+
+  eventButtons.forEach((button) => {
+    const li = document.createElement("li");
+    li.textContent = button.textContent;
+    elements.todayEventsList.appendChild(li);
+  });
+}
+
+function observeDashboardData() {
+  const observer = new MutationObserver(() => {
+    mirrorQuickStats();
+    renderTodaySummary();
+    renderTodayEvents();
+  });
+
+  [
+    elements.dailyTaskList,
+    elements.taskList,
+    elements.habitList,
+    elements.focusSessionList,
+    elements.calendarGrid,
+    elements.level,
+    elements.exp,
+    elements.atk,
+    elements.int,
+    elements.disc,
+    elements.cre,
+    elements.end,
+    elements.foc,
+    elements.wis,
+  ].forEach((target) => {
+    observer.observe(target, { childList: true, subtree: true, characterData: true });
+  });
+
+  mirrorQuickStats();
+  renderTodaySummary();
+  renderTodayEvents();
+}
+
 function initActivityLog() {
   return activityApi.subscribe((entries) => {
     elements.activityLogList.innerHTML = "";
@@ -85,6 +206,7 @@ function initActivityLog() {
 }
 
 function init() {
+  initNavigation();
   initRewardEngine({ notifyError });
   initStats(elements);
   initTasks(elements, notifyError);
@@ -94,6 +216,7 @@ function init() {
   initFocus(elements, notifyError);
   initCalendar(elements, notifyError);
   initActivityLog();
+  observeDashboardData();
 }
 
 init();
