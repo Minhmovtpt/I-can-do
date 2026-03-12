@@ -26,6 +26,10 @@ const KANBAN_COLUMNS = [
   { key: "done", elementKey: "kanbanDone" },
 ];
 
+function isBoardTask(task) {
+  return task && task.type !== "daily" && task.type !== "habit";
+}
+
 function formatDate(ts) {
   return ts ? new Date(ts).toLocaleString() : "-";
 }
@@ -163,7 +167,7 @@ export function initTasks(elements, notifyError) {
       if (el) el.innerHTML = "";
     });
 
-    const taskRows = Object.entries(tasks).filter(([, task]) => task.type === "task");
+    const taskRows = Object.entries(tasks).filter(([, task]) => isBoardTask(task));
 
     taskRows.forEach(([id, task]) => {
       const status = statusLabel(task.status, task.completed);
@@ -314,7 +318,7 @@ export function initTasks(elements, notifyError) {
         return;
       }
 
-      const taskRows = Object.entries(tasks).filter(([, task]) => task.type === "task");
+      const taskRows = Object.entries(tasks).filter(([, task]) => isBoardTask(task));
 
       taskRows
         .sort(([, a], [, b]) => (b.createdAt || 0) - (a.createdAt || 0))
