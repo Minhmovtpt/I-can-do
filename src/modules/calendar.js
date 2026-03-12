@@ -122,6 +122,70 @@ function scheduledItems(days, tasks, dailyTasks, habits) {
   return byDay;
 }
 
+function parseTime(time = "09:00") {
+  const [h, m] = String(time)
+    .split(":")
+    .map((n) => Number(n || 0));
+  return { h, m };
+}
+
+function rangeDayKeys(days) {
+  return new Set(days.filter(Boolean).map((d) => toDayKey(d)));
+}
+
+function scheduledItems(days, tasks, dailyTasks, habits) {
+  const byDay = new Map();
+  const keys = rangeDayKeys(days);
+
+  const add = (dayKey, item) => {
+    if (!keys.has(dayKey)) return;
+    if (!byDay.has(dayKey)) byDay.set(dayKey, []);
+    byDay.get(dayKey).push(item);
+  };
+
+  Object.entries(tasks || {}).forEach(([id, task]) => {
+    const ts = task.schedule?.specificAt;
+    if (!ts) return;
+    const date = new Date(ts);
+    add(toDayKey(date), {
+      id: `task-${id}`,
+      kind: "task",
+      title: task.title,
+      startAt: ts,
+      endAt: ts + 30 * 60 * 1000,
+    });
+  });
+
+  days.filter(Boolean).forEach((d) => {
+    Object.entries(dailyTasks || {}).forEach(([id, task]) => {
+      const { h, m } = parseTime(task.schedule?.time);
+      const startAt = new Date(d.getFullYear(), d.getMonth(), d.getDate(), h, m).getTime();
+      add(toDayKey(d), {
+        id: `daily-${id}-${toDayKey(d)}`,
+        kind: "daily",
+        title: task.title,
+        startAt,
+        endAt: startAt + 30 * 60 * 1000,
+      });
+    });
+
+    Object.entries(habits || {}).forEach(([id, habit]) => {
+      if (Number(habit.schedule?.dayOfWeek) !== d.getDay()) return;
+      const { h, m } = parseTime(habit.schedule?.time);
+      const startAt = new Date(d.getFullYear(), d.getMonth(), d.getDate(), h, m).getTime();
+      add(toDayKey(d), {
+        id: `habit-${id}-${toDayKey(d)}`,
+        kind: "habit",
+        title: habit.title,
+        startAt,
+        endAt: startAt + 30 * 60 * 1000,
+      });
+    });
+  });
+
+  return byDay;
+}
+
 export function initCalendar(elements, notifyError) {
   let viewDate = new Date();
   let viewMode = "month";
