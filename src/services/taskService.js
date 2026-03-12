@@ -22,9 +22,6 @@ export async function updateTask(taskId, updates = {}) {
   if (updates.description !== undefined) {
     payload.description = String(updates.description || "").trim();
   }
-  if (updates.condition !== undefined) {
-    payload.condition = String(updates.condition || "").trim();
-  }
   if (updates.type !== undefined) {
     payload.type = updates.type;
   }

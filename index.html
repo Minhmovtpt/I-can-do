@@ -14,8 +14,6 @@
         <nav class="sidebar-nav" id="sidebarNav">
           <button class="nav-btn is-active" data-view="dashboard" title="Dashboard">🏠</button>
           <button class="nav-btn" data-view="calendar" title="Calendar">📅</button>
-          <button class="nav-btn" data-view="focus" title="Focus">🎯</button>
-          <button class="nav-btn" data-view="notes" title="Notes">📝</button>
           <button class="nav-btn" data-view="finance" title="Finance">💰</button>
           <button class="nav-btn" data-view="stats" title="Stats">📊</button>
         </nav>
@@ -56,13 +54,7 @@
         <section class="main-view" data-view="calendar">
           <section class="card calendar-workspace">
             <h2>Calendar Workspace</h2>
-
-            <div class="calendar-tabs" id="calendarTabs">
-              <button class="is-active" data-calendar-mode="board">Task Board</button>
-              <button data-calendar-mode="timeline">Calendar</button>
-            </div>
-
-            <section class="calendar-mode is-active" data-calendar-mode="board">
+            <div class="calendar-work-grid">
               <section class="task-board" aria-label="Task board">
                 <h3>Task Board</h3>
                 <div class="task-columns">
@@ -84,9 +76,7 @@
                   </div>
                 </div>
               </section>
-            </section>
 
-            <section class="calendar-mode" data-calendar-mode="timeline">
               <section class="calendar-timeline">
                 <div class="calendar-input">
                   <input type="text" id="calendarTitleInput" placeholder="Event title" />
@@ -117,30 +107,7 @@
                 <div class="calendar-weekdays" id="calendarWeekdays"></div>
                 <div class="calendar-grid" id="calendarGrid"></div>
               </section>
-            </section>
-          </section>
-        </section>
-
-        <section class="main-view" data-view="focus">
-          <section class="card focus">
-            <h2>Focus Session</h2>
-            <div class="focus-controls">
-              <button data-duration="90">Start 90 min</button>
-              <button data-duration="120">Start 120 min</button>
-              <button id="cancelFocusBtn" class="btn-danger">Cancel Active</button>
             </div>
-            <div class="focus-timer" id="focusTimer">00:00</div>
-            <h3>Sessions</h3>
-            <ul id="focusSessionList"></ul>
-          </section>
-        </section>
-
-        <section class="main-view" data-view="notes">
-          <section class="card notes">
-            <h2>Notes</h2>
-            <textarea id="noteInput" placeholder="Write quick note..."></textarea>
-            <button id="saveNoteBtn">Save</button>
-            <ul id="notesList"></ul>
           </section>
         </section>
 
@@ -210,32 +177,11 @@
 
         <section>
           <h3>Daily Tasks <small id="dailyProgressText">0/0 completed</small></h3>
-          <div class="sub-form">
-            <input type="text" id="dailyTaskInput" placeholder="Daily task title" />
-            <input type="time" id="dailyTaskTimeInput" />
-            <input type="text" id="dailyTaskConditionInput" placeholder="Condition" />
-            <button id="addDailyTaskBtn">Add Daily Task</button>
-          </div>
           <ul id="dailyTaskList"></ul>
         </section>
 
         <section>
           <h3>Habits</h3>
-          <div class="sub-form">
-            <input type="text" id="habitInput" placeholder="Habit title" />
-            <select id="habitDayInput">
-              <option value="1">Monday</option>
-              <option value="2">Tuesday</option>
-              <option value="3">Wednesday</option>
-              <option value="4">Thursday</option>
-              <option value="5">Friday</option>
-              <option value="6">Saturday</option>
-              <option value="0">Sunday</option>
-            </select>
-            <input type="time" id="habitTimeInput" />
-            <input type="text" id="habitConditionInput" placeholder="Condition" />
-            <button id="addHabitBtn">Add Habit</button>
-          </div>
           <ul id="habitList"></ul>
         </section>
 
@@ -245,12 +191,10 @@
           <div id="taskCreationPanel" class="task-creation-panel">
             <input type="text" id="taskInput" placeholder="Task title" />
             <textarea id="taskDescriptionInput" placeholder="Task description"></textarea>
-            <input type="text" id="taskConditionInput" placeholder="Condition" />
             <select id="taskTypeInput">
-              <option value="work">work</option>
+              <option value="task">work</option>
               <option value="personal">personal</option>
               <option value="study">study</option>
-              <option value="task">task</option>
             </select>
             <select id="taskPriorityInput">
               <option value="low">low</option>
@@ -260,7 +204,7 @@
             <input type="datetime-local" id="taskScheduleInput" />
             <button id="addTaskBtn">Save Task</button>
           </div>
-          <ul id="taskList"></ul>
+          <ul id="habitList"></ul>
         </section>
       </aside>
     </div>

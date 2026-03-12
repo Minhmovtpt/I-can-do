@@ -9,7 +9,7 @@ body {
 }
 .app-layout {
   display: grid;
-  grid-template-columns: 90px 1fr 360px;
+  grid-template-columns: 90px 1fr 340px;
   gap: 12px;
   min-height: 100vh;
   padding: 12px;
@@ -34,9 +34,6 @@ body {
 .nav-btn.is-active {
   background: #364966;
 }
-.main-area {
-  min-width: 0;
-}
 .main-view {
   display: none;
   gap: 12px;
@@ -55,6 +52,9 @@ body {
   border-radius: 8px;
   display: flex;
   justify-content: space-between;
+}
+.main-area {
+  min-width: 0;
 }
 .task-panel {
   overflow: auto;
@@ -89,7 +89,6 @@ button {
   display: flex;
   gap: 6px;
   margin-top: 6px;
-  align-items: center;
 }
 .item-actions button {
   width: auto;
@@ -105,22 +104,10 @@ button {
   text-decoration: line-through;
   opacity: 0.75;
 }
-.calendar-tabs {
-  display: flex;
-  gap: 6px;
-  margin-bottom: 10px;
-}
-.calendar-tabs button {
-  width: auto;
-}
-.calendar-tabs button.is-active {
-  background: #364966;
-}
-.calendar-mode {
-  display: none;
-}
-.calendar-mode.is-active {
-  display: block;
+.calendar-work-grid {
+  display: grid;
+  grid-template-columns: 1fr 1.2fr;
+  gap: 12px;
 }
 .task-columns {
   display: grid;
@@ -132,7 +119,6 @@ button {
   border: 1px solid #29354d;
   border-radius: 8px;
   padding: 8px;
-  min-height: 130px;
 }
 .calendar-weekdays,
 .calendar-grid {
@@ -141,7 +127,7 @@ button {
   gap: 6px;
 }
 .calendar-day {
-  min-height: 104px;
+  min-height: 92px;
   background: #111722;
   border: 1px solid #29354d;
   border-radius: 8px;
@@ -156,10 +142,6 @@ button {
   font-size: 12px;
   text-align: left;
 }
-.calendar-event-btn.is-generated {
-  border-color: #4d667f;
-  color: #b9d3ef;
-}
 .calendar-input {
   display: grid;
   gap: 6px;
@@ -170,7 +152,6 @@ button {
   gap: 6px;
   align-items: center;
   margin-bottom: 10px;
-  flex-wrap: wrap;
 }
 .calendar-toolbar button {
   width: auto;
@@ -187,11 +168,6 @@ button {
 }
 .task-creation-panel.is-open {
   display: grid;
-}
-.sub-form {
-  display: grid;
-  gap: 6px;
-  margin-top: 6px;
 }
 .habit-tick {
   width: 22px;
@@ -219,17 +195,7 @@ button {
   border-radius: 8px;
   padding: 8px;
 }
-.focus-controls {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
-}
-.focus-timer {
-  font-size: 28px;
-  font-weight: 700;
-  margin-top: 8px;
-}
-@media (max-width: 1240px) {
+@media (max-width: 1180px) {
   .app-layout {
     grid-template-columns: 70px 1fr;
   }
