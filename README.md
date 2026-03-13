@@ -5,7 +5,7 @@
 The UI is organized into 3 logical layers:
 
 - **Navigation Layer**: sidebar mode selector.
-- **Work Layer**: main workspace (Dashboard / Calendar / Focus / Notes / Finance / Stats).
+- **Work Layer**: main workspace (Dashboard / Calendar / Focus / Notes / Finance / Stats / Settings / Web Shortcuts).
 - **Action Layer**: always-visible right panel for creating and tracking Daily Tasks, Habits, and Tasks.
 
 ## Current modules
@@ -29,6 +29,13 @@ The UI is organized into 3 logical layers:
   - Income/expense transactions
   - Monthly recurring transactions
   - Income/Outcome totals and synced balance
+- **Stats**
+  - Display user statistics and progress
+- **Settings**
+  - Manage daily tasks and habits (create, edit, delete)
+  - Reset options for tasks, stats, and entire database
+- **Web Shortcuts**
+  - Quick access buttons to frequently used websites
 
 ## Unified work-item model
 
