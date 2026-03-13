@@ -22,6 +22,7 @@ export function initFinanceGuard(elements) {
   function promptPassword() {
     return new Promise((resolve) => {
       const onUnlock = () => {
+        unlockBtn.disabled = true;
         if (input.value.trim() === FINANCE_PASSWORD) {
           isFinanceUnlocked = true;
           cleanup();
@@ -32,6 +33,7 @@ export function initFinanceGuard(elements) {
         alert("Wrong password");
         input.value = "";
         input.focus();
+        unlockBtn.disabled = false;
       };
 
       const onCancel = () => {
