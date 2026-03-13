@@ -177,6 +177,13 @@ export const activityApi = {
   subscribe: (callback) => subscribe(PATHS.activityLog, callback),
 };
 
+export const webShortcutsApi = {
+  add: (shortcut) => create(PATHS.webShortcuts, shortcut),
+  subscribe: (callback) => subscribe(PATHS.webShortcuts, callback),
+  getById: (shortcutId) => read(`${PATHS.webShortcuts}/${shortcutId}`),
+  updateById: (shortcutId, value) => patch(`${PATHS.webShortcuts}/${shortcutId}`, value),
+  deleteById: (shortcutId) => destroy(`${PATHS.webShortcuts}/${shortcutId}`),
+};
 export const calendarApi = {
   addEvent: (event) => create(PATHS.calendarEvents, event),
   subscribeEvents: (callback) => subscribe(PATHS.calendarEvents, callback),
