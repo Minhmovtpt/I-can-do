@@ -75,3 +75,4 @@ python -m http.server 3000
 ```
 
 Then open `http://localhost:3000`.
+![CodeRabbit Pull Request Reviews](https://img.shields.io/coderabbit/prs/github/Minhmovtpt/I-can-do?utm_source=oss&utm_medium=github&utm_campaign=Minhmovtpt%2FI-can-do&labelColor=171717&color=FF570A&link=https%3A%2F%2Fcoderabbit.ai&label=CodeRabbit+Reviews)
