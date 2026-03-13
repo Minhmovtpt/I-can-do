@@ -21,6 +21,8 @@ This keeps mode switching separate from data-entry actions.
 - `initFocus`
 - `initFinance`
 - `initCalendar`
+- `initSettings`
+- `initWebShortcuts`
 - reward engine + activity log binding
 
 ## 3) Core data model
@@ -66,3 +68,6 @@ Services (`src/services/*`) handle:
 - **Calendar** shows all scheduled entities.
 - **Action panel** supports creation forms for Daily Tasks, Habits, and Tasks including time/schedule + condition inputs.
 - **Focus/Notes** remain standalone work modes and are fully initialized from UI root.
+- **Settings** provides management for daily tasks and habits, plus database reset options.
+- **Web Shortcuts** offers quick links to external websites.
+- **Finance Guard** protects the finance module with a password.
