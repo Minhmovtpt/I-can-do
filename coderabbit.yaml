@@ -1,0 +1,10 @@
+reviews:
+  profile: chill
+  auto_review: true
+
+chat:
+  auto_reply: true
+
+path_filters:
+  - "!node_modules/**"
+  - "!dist/**"
