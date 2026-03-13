@@ -16,7 +16,6 @@
           <button class="nav-btn" data-view="calendar" title="Calendar">📅</button>
           <button class="nav-btn" data-view="notes" title="Notes">📝</button>
           <button class="nav-btn" data-view="settings" title="Settings">⚙️</button>
-          <button class="nav-btn" data-view="focus" title="Focus">🎯</button>
           <button class="nav-btn" data-view="finance" title="Finance">💰</button>
           <button class="nav-btn" data-view="stats" title="Stats">📊</button>
         </nav>
@@ -51,6 +50,24 @@
           <section class="card dashboard-card">
             <h2>Today's Calendar Events</h2>
             <ul id="todayEventsList"></ul>
+          </section>
+
+          <section class="card dashboard-card">
+            <h2>Focus Session</h2>
+            <div class="focus-timer" id="focusDashboardTimer">00:00</div>
+            <div class="focus-controls focus-controls-dashboard">
+              <button id="focusDashboardStartBtn">Start</button>
+              <button id="focusDashboardStopBtn" class="btn-danger">Stop</button>
+            </div>
+            <div class="focus-dashboard-stats">
+              <span>Session Today: <strong id="focusSessionToday">0</strong></span>
+              <span>Total Time: <strong id="focusTotalTimeToday">0m</strong></span>
+            </div>
+          </section>
+
+          <section class="card dashboard-card">
+            <h2>Web Shortcuts</h2>
+            <div class="dashboard-shortcuts" id="webShortcutsContainer"></div>
           </section>
 
           <section class="card dashboard-card dashboard-wide activity">
@@ -138,20 +155,6 @@
                 </div>
               </section>
             </div>
-          </section>
-        </section>
-
-        <section class="main-view" data-view="focus">
-          <section class="card focus">
-            <h2>Focus Session</h2>
-            <div class="focus-controls">
-              <button data-duration="90">Start 90 min</button>
-              <button data-duration="120">Start 120 min</button>
-              <button id="cancelFocusBtn" class="btn-danger">Cancel Active</button>
-            </div>
-            <div class="focus-timer" id="focusTimer">00:00</div>
-            <h3>Sessions</h3>
-            <ul id="focusSessionList"></ul>
           </section>
         </section>
 
@@ -272,6 +275,18 @@
           <ul id="habitList"></ul>
         </section>
       </aside>
+    </div>
+
+    <div class="modal-backdrop" id="financeGuardModal" hidden>
+      <div class="modal-card">
+        <h3>Finance Password</h3>
+        <p>Enter password to unlock Finance tab.</p>
+        <input type="password" id="financePasswordInput" placeholder="Password" />
+        <div class="item-actions">
+          <button id="financeUnlockBtn">Unlock</button>
+          <button id="financeCancelBtn" class="btn-muted">Cancel</button>
+        </div>
+      </div>
     </div>
 
     <script type="module" src="./src/ui/ui.js"></script>

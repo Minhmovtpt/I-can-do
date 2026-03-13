@@ -1,6 +1,15 @@
 import { tasksApi, dailyTasksApi, habitsApi } from "../core/firebase.js";
 
 const WEEK_DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const FOUR_DAYS_MS = 4 * 24 * 60 * 60 * 1000;
+
+function toDayKey(date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+}
+
+function getMonthLabel(date, viewMode) {
+  return `${viewMode.toUpperCase()} • ${date.toLocaleString([], { month: "long", year: "numeric" })}`;
+}
 
 function formatTimeRange(event) {
   const start = new Date(event.startAt);
@@ -9,12 +18,30 @@ function formatTimeRange(event) {
   return `${start.toLocaleTimeString([], options)}-${end.toLocaleTimeString([], options)}`;
 }
 
-function getMonthLabel(date, viewMode) {
-  return `${viewMode.toUpperCase()} • ${date.toLocaleString([], { month: "long", year: "numeric" })}`;
+function resolveStatus(event, now) {
+  if (event.completed) return "completed";
+  if ((event.taskTime || event.startAt) < now) return "fail";
+  return "pending";
 }
 
-function toDayKey(date) {
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+function snapshotPrefix(status) {
+  if (status === "fail") return "● FAIL";
+  if (status === "completed") return "✔";
+  return "●";
+}
+
+function createStatusDot(status) {
+  const dot = document.createElement("span");
+  dot.className = `calendar-status-dot is-${status}`;
+  dot.textContent = "●";
+  return dot;
+}
+
+function parseTime(time = "09:00") {
+  const [h, m] = String(time)
+    .split(":")
+    .map((n) => Number(n || 0));
+  return { h, m };
 }
 
 function getDaysGrid(viewDate, viewMode) {
@@ -44,63 +71,58 @@ function getDaysGrid(viewDate, viewMode) {
   return cells;
 }
 
-function parseTime(time = "09:00") {
-  const [h, m] = String(time)
-    .split(":")
-    .map((n) => Number(n || 0));
-  return { h, m };
-}
-
-function rangeDayKeys(days) {
-  return new Set(days.filter(Boolean).map((d) => toDayKey(d)));
-}
-
 function scheduledItems(days, tasks, dailyTasks, habits) {
   const byDay = new Map();
-  const keys = rangeDayKeys(days);
+  const allowed = new Set(days.filter(Boolean).map((d) => toDayKey(d)));
 
-  const add = (dayKey, item) => {
-    if (!keys.has(dayKey)) return;
-    if (!byDay.has(dayKey)) byDay.set(dayKey, []);
-    byDay.get(dayKey).push({ ...item, readonly: true });
+  const add = (date, event) => {
+    const key = toDayKey(date);
+    if (!allowed.has(key)) return;
+    if (!byDay.has(key)) byDay.set(key, []);
+    byDay.get(key).push(event);
   };
 
-  Object.entries(tasks || {}).forEach(([id, task]) => {
+  Object.values(tasks || {}).forEach((task) => {
     const ts = task.schedule?.specificAt;
     if (!ts) return;
     const date = new Date(ts);
-    add(toDayKey(date), {
-      id: `task-${id}`,
-      kind: "task",
+    add(date, {
       title: task.title,
+      kind: "task",
       startAt: ts,
       endAt: ts + 30 * 60 * 1000,
+      taskTime: ts,
+      completed: Boolean(task.completed),
     });
   });
 
-  days.filter(Boolean).forEach((d) => {
-    Object.entries(dailyTasks || {}).forEach(([id, task]) => {
+  days.filter(Boolean).forEach((date) => {
+    Object.values(dailyTasks || {}).forEach((task) => {
       const { h, m } = parseTime(task.schedule?.time);
-      const startAt = new Date(d.getFullYear(), d.getMonth(), d.getDate(), h, m).getTime();
-      add(toDayKey(d), {
-        id: `daily-${id}-${toDayKey(d)}`,
-        kind: "daily",
+      const at = new Date(date.getFullYear(), date.getMonth(), date.getDate(), h, m).getTime();
+      const done = task.lastCompleted === date.toDateString();
+      add(date, {
         title: task.title,
-        startAt,
-        endAt: startAt + 30 * 60 * 1000,
+        kind: "daily",
+        startAt: at,
+        endAt: at + 30 * 60 * 1000,
+        taskTime: at,
+        completed: done,
       });
     });
 
-    Object.entries(habits || {}).forEach(([id, habit]) => {
-      if (Number(habit.schedule?.dayOfWeek) !== d.getDay()) return;
+    Object.values(habits || {}).forEach((habit) => {
+      if (Number(habit.schedule?.dayOfWeek) !== date.getDay()) return;
       const { h, m } = parseTime(habit.schedule?.time);
-      const startAt = new Date(d.getFullYear(), d.getMonth(), d.getDate(), h, m).getTime();
-      add(toDayKey(d), {
-        id: `habit-${id}-${toDayKey(d)}`,
-        kind: "habit",
+      const at = new Date(date.getFullYear(), date.getMonth(), date.getDate(), h, m).getTime();
+      const done = habit.lastCompleted === date.toDateString();
+      add(date, {
         title: habit.title,
-        startAt,
-        endAt: startAt + 30 * 60 * 1000,
+        kind: "habit",
+        startAt: at,
+        endAt: at + 30 * 60 * 1000,
+        taskTime: at,
+        completed: done,
       });
     });
   });
@@ -130,6 +152,8 @@ export function initCalendar(elements) {
 
     const gridDays = getDaysGrid(viewDate, viewMode);
     const byDay = scheduledItems(gridDays, tasksById, dailyTasksById, habitsById);
+    const now = Date.now();
+    const maxVisible = now + FOUR_DAYS_MS;
 
     elements.calendarGrid.innerHTML = "";
     elements.calendarGrid.style.gridTemplateColumns =
@@ -146,22 +170,32 @@ export function initCalendar(elements) {
       }
 
       const key = toDayKey(dayDate);
-      const dayLabel = document.createElement("div");
-      dayLabel.className = "calendar-day-label";
-      dayLabel.textContent = String(dayDate.getDate());
-      cell.appendChild(dayLabel);
+      if (dayDate.getTime() > maxVisible) {
+        cell.classList.add("calendar-day-future");
+      }
+
+      const label = document.createElement("div");
+      label.className = "calendar-day-label";
+      label.textContent = String(dayDate.getDate());
+      cell.appendChild(label);
 
       (byDay.get(key) || [])
         .sort((a, b) => (a.startAt || 0) - (b.startAt || 0))
         .forEach((event) => {
+          const status = resolveStatus(event, now);
           const row = document.createElement("div");
           row.className = "calendar-event";
 
-          const text = document.createElement("button");
-          text.className = "calendar-event-btn is-generated";
-          text.disabled = true;
-          text.textContent = `${formatTimeRange(event)} ${event.title} [${event.kind}]`;
-          row.appendChild(text);
+          const button = document.createElement("button");
+          button.className = `calendar-event-btn is-generated status-${status}`;
+          button.disabled = true;
+          button.appendChild(createStatusDot(status));
+
+          const text = document.createElement("span");
+          text.textContent = `${snapshotPrefix(status)} ${formatTimeRange(event)} ${event.title} [${event.kind}]`;
+          button.appendChild(text);
+
+          row.appendChild(button);
           cell.appendChild(row);
         });
 

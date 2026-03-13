@@ -8,6 +8,8 @@ import { initCalendar } from "../modules/calendar.js";
 import { initFocus } from "../modules/focus.js";
 import { initNotes } from "../modules/notes.js";
 import { initSettings } from "../modules/settings.js";
+import { initWebShortcuts } from "../modules/webShortcuts.js";
+import { initFinanceGuard } from "../modules/financeGuard.js";
 import { createNote } from "../services/noteService.js";
 
 const elements = {
@@ -70,10 +72,11 @@ const elements = {
   kanbanTodo: document.getElementById("kanban-todo"),
   kanbanInProgress: document.getElementById("kanban-in-progress"),
   kanbanDone: document.getElementById("kanban-done"),
-  focusTimer: document.getElementById("focusTimer"),
-  focusButtons: document.querySelectorAll(".focus-controls button[data-duration]"),
-  cancelFocusBtn: document.getElementById("cancelFocusBtn"),
-  focusSessionList: document.getElementById("focusSessionList"),
+  focusDashboardTimer: document.getElementById("focusDashboardTimer"),
+  focusDashboardStartBtn: document.getElementById("focusDashboardStartBtn"),
+  focusDashboardStopBtn: document.getElementById("focusDashboardStopBtn"),
+  focusSessionToday: document.getElementById("focusSessionToday"),
+  focusTotalTimeToday: document.getElementById("focusTotalTimeToday"),
   noteInput: document.getElementById("noteInput"),
   saveNoteBtn: document.getElementById("saveNoteBtn"),
   notesList: document.getElementById("notesList"),
@@ -95,6 +98,11 @@ const elements = {
   calendarMonthLabel: document.getElementById("calendarMonthLabel"),
   calendarWeekdays: document.getElementById("calendarWeekdays"),
   calendarGrid: document.getElementById("calendarGrid"),
+  webShortcutsContainer: document.getElementById("webShortcutsContainer"),
+  financeGuardModal: document.getElementById("financeGuardModal"),
+  financePasswordInput: document.getElementById("financePasswordInput"),
+  financeUnlockBtn: document.getElementById("financeUnlockBtn"),
+  financeCancelBtn: document.getElementById("financeCancelBtn"),
 };
 
 function notifyError(error, fallback = "Operation failed") {
@@ -121,11 +129,27 @@ function switchCalendarMode(mode) {
   });
 }
 
-function initNavigation() {
-  elements.sidebarNav.addEventListener("click", (event) => {
+function initNavigation(financeGuard) {
+  elements.sidebarNav.addEventListener("click", async (event) => {
     const button = event.target.closest(".nav-btn");
     if (!button) return;
-    switchMainView(button.dataset.view);
+
+    const targetView = button.dataset.view;
+    const currentView = document.querySelector(".main-view.is-active")?.dataset.view;
+
+    if (currentView === "finance" && targetView !== "finance") {
+      financeGuard.lockFinance();
+    }
+
+    if (targetView === "finance") {
+      const allowed = await financeGuard.canAccessFinance();
+      if (!allowed) {
+        switchMainView(currentView || "dashboard");
+        return;
+      }
+    }
+
+    switchMainView(targetView);
   });
 
   elements.toggleTaskCreationBtn.addEventListener("click", () => {
@@ -236,7 +260,6 @@ function observeDashboardData() {
     elements.dailyTaskList,
     elements.taskList,
     elements.habitList,
-    elements.focusSessionList,
     elements.calendarGrid,
     elements.level,
     elements.exp,
@@ -267,12 +290,12 @@ function initActivityLog() {
       li.textContent = entry.message || `+${entry.value} ${String(entry.stat || "").toUpperCase()}`;
       elements.activityLogList.appendChild(li);
     });
-
   });
 }
 
 function init() {
-  initNavigation();
+  const financeGuard = initFinanceGuard(elements);
+  initNavigation(financeGuard);
   initRewardEngine({ notifyError });
   initStats(elements);
   initTasks(elements, notifyError);
@@ -282,6 +305,7 @@ function init() {
   initFinance(elements, notifyError);
   initFocus(elements, notifyError);
   initCalendar(elements, notifyError);
+  initWebShortcuts(elements);
   initQuickNote();
   initDateTime();
   initActivityLog();

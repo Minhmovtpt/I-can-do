@@ -11,4 +11,5 @@ export const PATHS = Object.freeze({
   activityLog: "activityLog",
   calendar: "calendar",
   calendarEvents: "calendar/events",
+  webShortcuts: "webShortcuts",
 });

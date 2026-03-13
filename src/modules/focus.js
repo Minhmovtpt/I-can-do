@@ -1,150 +1,112 @@
 import {
-  startFocusSession,
-  finalizeFocusSession,
+  startSession,
+  cancelSession,
+  completeSession,
   subscribeFocusSessions,
   getFocusSessionState,
-  deleteFocusSession as removeFocusSession
 } from "../services/focusService.js";
 
-function buildActions(actions) {
-  const wrap = document.createElement("div");
-  wrap.className = "item-actions";
-  actions.forEach(({ label, onClick, className }) => {
-    const btn = document.createElement("button");
-    btn.textContent = label;
-    btn.className = className || "";
-    btn.addEventListener("click", onClick);
-    wrap.appendChild(btn);
-  });
-  return wrap;
-}
-
 export function initFocus(elements, notifyError) {
-  let focusInterval = null;
+  let timerId = null;
   let activeSessionId = null;
-  let activeSessionStart = null;
-  let activeSessionDuration = null;
+  let activeStart = null;
+  let activeDuration = null;
 
-  function updateTimerDisplay(seconds) {
-    const safe = Math.max(0, seconds);
+  function updateTimerView(seconds) {
+    const safe = Math.max(0, Number(seconds || 0));
     const mm = Math.floor(safe / 60);
     const ss = safe % 60;
-    elements.focusTimer.textContent = `${String(mm).padStart(2, "0")}:${String(ss).padStart(2, "0")}`;
+    elements.focusDashboardTimer.textContent = `${String(mm).padStart(2, "0")}:${String(ss).padStart(2, "0")}`;
   }
 
-  async function finalizeSession(status) {
+  function updateDashboardStats(sessions) {
+    const list = Object.values(sessions || {});
+    const today = new Date().toDateString();
+    const todayRows = list.filter(
+      (row) => row.createdAt && new Date(row.createdAt).toDateString() === today,
+    );
+    const completedToday = todayRows.filter((row) => row.status === "completed");
+    const totalMinutes = completedToday.reduce((sum, row) => sum + Number(row.duration || 0), 0);
+    elements.focusSessionToday.textContent = String(completedToday.length);
+    elements.focusTotalTimeToday.textContent = `${totalMinutes}m`;
+  }
+
+  async function finalizeActiveSession(status) {
     if (!activeSessionId) return;
-    await finalizeFocusSession(activeSessionId, status);
-    activeSessionId = null;
-    activeSessionStart = null;
-    activeSessionDuration = null;
+    if (timerId) {
+      clearInterval(timerId);
+      timerId = null;
+    }
+
+    try {
+      if (status === "completed") {
+        await completeSession(activeSessionId);
+      } else {
+        await cancelSession(activeSessionId);
+      }
+      activeSessionId = null;
+      activeStart = null;
+      activeDuration = null;
+      updateTimerView(0);
+    } catch (error) {
+      notifyError(error, "Failed to update focus session");
+    }
   }
 
-  function startFocusTimer(startTime, durationMinutes) {
-    if (focusInterval) clearInterval(focusInterval);
-    const totalSeconds = durationMinutes * 60;
+  function startTicker() {
+    if (!activeStart || !activeDuration) return;
+    if (timerId) clearInterval(timerId);
 
+    const total = activeDuration * 60;
     const tick = async () => {
-      const elapsedSeconds = Math.floor((Date.now() - startTime) / 1000);
-      const remaining = totalSeconds - elapsedSeconds;
-      updateTimerDisplay(remaining);
-
+      const elapsed = Math.floor((Date.now() - activeStart) / 1000);
+      const remaining = total - elapsed;
+      updateTimerView(remaining);
       if (remaining <= 0) {
-        clearInterval(focusInterval);
-        focusInterval = null;
-        try {
-          await finalizeSession("completed");
-        } catch (error) {
-          notifyError(error, "Failed to finalize focus session");
-        }
+        await finalizeActiveSession("completed");
       }
     };
 
     tick();
-    focusInterval = setInterval(tick, 1000);
+    timerId = setInterval(tick, 1000);
   }
 
-  async function beginFocusSession(minutes) {
-    if (!minutes || minutes <= 0) return notifyError(new Error("Invalid focus duration"));
-    if (activeSessionId) return alert("A focus session is already active.");
+  async function handleStart() {
+    if (activeSessionId) return;
 
     try {
-      const session = await startFocusSession(minutes);
-      activeSessionId = session.sessionId;
-      activeSessionStart = session.startTime;
-      activeSessionDuration = session.duration;
-
-      startFocusTimer(activeSessionStart, activeSessionDuration);
+      const state = await startSession(90);
+      activeSessionId = state.sessionId;
+      activeStart = state.startTime;
+      activeDuration = state.duration;
+      startTicker();
     } catch (error) {
       notifyError(error, "Failed to start focus session");
     }
   }
 
-  async function cancelActiveFocusSession() {
-    if (!activeSessionId) return;
-    if (focusInterval) {
-      clearInterval(focusInterval);
-      focusInterval = null;
-    }
-    try {
-      await finalizeSession("cancelled");
-      updateTimerDisplay(0);
-    } catch (error) {
-      notifyError(error, "Failed to cancel focus session");
-    }
-  }
-
-  async function deleteFocusSession(sessionId) {
-    try {
-      if (sessionId === activeSessionId) {
-        await cancelActiveFocusSession();
-      }
-      await removeFocusSession(sessionId);
-    } catch (error) {
-      notifyError(error, "Failed to delete focus session");
-    }
-  }
-
-  async function restoreFocusSessionIfAny() {
+  async function restoreIfNeeded() {
     try {
       const state = await getFocusSessionState();
-      if (!state || !state.focusSessionActive) return;
+      if (!state?.focusSessionActive) return;
       activeSessionId = state.sessionId;
-      activeSessionStart = state.startTime;
-      activeSessionDuration = state.duration;
-      startFocusTimer(activeSessionStart, activeSessionDuration);
+      activeStart = state.startTime;
+      activeDuration = state.duration;
+      startTicker();
     } catch (error) {
       notifyError(error, "Failed to restore focus session");
     }
   }
 
-  elements.cancelFocusBtn.addEventListener("click", cancelActiveFocusSession);
-  elements.focusButtons.forEach((button) => {
-    button.addEventListener("click", () => beginFocusSession(Number(button.dataset.duration)));
-  });
+  elements.focusDashboardStartBtn?.addEventListener("click", handleStart);
+  elements.focusDashboardStopBtn?.addEventListener("click", () =>
+    finalizeActiveSession("cancelled"),
+  );
 
   const unsubscribe = subscribeFocusSessions((sessions) => {
-    elements.focusSessionList.innerHTML = "";
-    if (!sessions) return;
-
-    Object.entries(sessions)
-      .sort(([, a], [, b]) => (b.createdAt || 0) - (a.createdAt || 0))
-      .forEach(([id, session]) => {
-        const li = document.createElement("li");
-        const text = document.createElement("span");
-        text.textContent = `${session.duration}m — ${session.status || "unknown"}`;
-        li.appendChild(text);
-
-        const actions = [];
-        if (id === activeSessionId && session.status === "active") {
-          actions.push({ label: "Cancel", onClick: cancelActiveFocusSession });
-        }
-        actions.push({ label: "Delete", className: "btn-danger", onClick: () => deleteFocusSession(id) });
-        li.appendChild(buildActions(actions));
-        elements.focusSessionList.appendChild(li);
-      });
+    updateDashboardStats(sessions);
   });
 
-  restoreFocusSessionIfAny();
+  restoreIfNeeded();
   return unsubscribe;
 }

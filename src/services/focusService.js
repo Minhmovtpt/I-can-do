@@ -8,7 +8,7 @@ export async function startFocusSession(minutes) {
     duration: minutes,
     status: "active",
     endedAt: null,
-    createdAt: now
+    createdAt: now,
   });
 
   const sessionId = sessionRef.key;
@@ -16,7 +16,7 @@ export async function startFocusSession(minutes) {
     focusSessionActive: true,
     sessionId,
     startTime: now,
-    duration: minutes
+    duration: minutes,
   });
 
   return { sessionId, startTime: now, duration: minutes };
@@ -40,4 +40,16 @@ export function getFocusSessionState() {
 
 export function deleteFocusSession(sessionId) {
   return focusApi.deleteSessionById(sessionId);
+}
+
+export async function startSession(minutes = 90) {
+  return startFocusSession(minutes);
+}
+
+export async function cancelSession(sessionId) {
+  return finalizeFocusSession(sessionId, "cancelled");
+}
+
+export async function completeSession(sessionId) {
+  return finalizeFocusSession(sessionId, "completed");
 }
