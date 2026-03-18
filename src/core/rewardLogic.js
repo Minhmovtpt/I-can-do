@@ -7,7 +7,7 @@ export const BASE_STATS = {
   foc: 0,
   wis: 0,
   exp: 0,
-  level: 1
+  level: 1,
 };
 
 const RULES = {
@@ -19,10 +19,10 @@ const RULES = {
     end: 1,
     foc: 1,
     wis: 1,
-    exp: 1
+    exp: 1,
   },
   skillBonuses: {},
-  levelScaling: (level) => level * 100
+  levelScaling: (level) => level * 100,
 };
 
 function withDefaults(stats) {
@@ -32,7 +32,7 @@ function withDefaults(stats) {
 function gainWithRules(key, value, context = {}) {
   const multiplier = RULES.multipliers[key] ?? 1;
   const skillBonus = RULES.skillBonuses[context.skill || ""]?.[key] ?? 0;
-  return Math.round((value + skillBonus) * multiplier);
+  return Math.round(((value + skillBonus) * multiplier + Number.EPSILON) * 100) / 100;
 }
 
 export function resolveReward(rawReward, context = {}) {

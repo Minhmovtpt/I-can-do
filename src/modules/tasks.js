@@ -5,42 +5,49 @@ import {
 } from "../services/dailyTaskService.js";
 import { completeHabit, subscribeHabits, resetHabitsForToday } from "../services/habitService.js";
 import {
+  buildTaskTagsFromInputs,
   createTask,
   updateTask,
   deleteTask,
   completeTask as markTaskComplete,
   subscribeTasks,
 } from "../services/taskService.js";
+import {
+  TASK_PRIORITY_MULTIPLIERS,
+  TASK_TAG_LAYERS,
+  getDurationMultiplier,
+} from "../core/workItemModel.js";
 import { getScheduledDays, isScheduledOnDate, toDayString } from "../core/habitLogic.js";
 
 const STATUS_LABELS = {
-  backlog: "Backlog",
   todo: "Todo",
   in_progress: "In Progress",
-  done: "Done",
-  cancelled: "Cancelled",
+  completed: "Completed",
+  skipped: "Skipped",
+  failed: "Failed",
+};
+
+const PRIORITY_LABELS = {
+  critical: `Critical x${TASK_PRIORITY_MULTIPLIERS.critical}`,
+  important: `Important x${TASK_PRIORITY_MULTIPLIERS.important}`,
+  optional: `Optional x${TASK_PRIORITY_MULTIPLIERS.optional}`,
 };
 
 const KANBAN_COLUMNS = [
-  { key: "backlog", elementKey: "kanbanBacklog" },
-  { key: "todo", elementKey: "kanbanTodo" },
-  { key: "in_progress", elementKey: "kanbanInProgress" },
-  { key: "done", elementKey: "kanbanDone" },
+  { key: "todo", elementKey: "kanbanBacklog" },
+  { key: "in_progress", elementKey: "kanbanTodo" },
+  { key: "completed", elementKey: "kanbanInProgress" },
+  { key: "failed", elementKey: "kanbanDone" },
 ];
 
-const STATUS_SEQUENCE = ["backlog", "todo", "in_progress", "done"];
+const STATUS_SEQUENCE = ["todo", "in_progress", "completed", "failed"];
 
 function isBoardTask(task) {
-  return task && task.type !== "daily" && task.type !== "habit";
+  return task && !task.type;
 }
 
 function formatDate(ts) {
   return ts ? new Date(ts).toLocaleString() : "-";
-}
-
-function statusLabel(status, completed) {
-  if (status) return status;
-  return completed ? "done" : "backlog";
 }
 
 function formatScheduleForInput(schedule) {
@@ -55,6 +62,16 @@ function formatRoutineDays(task) {
   const days = getScheduledDays(task.schedule);
   if (!days.length) return "Every day";
   return `Days: ${days.join(",")}`;
+}
+
+function formatTaskTags(task) {
+  return TASK_TAG_LAYERS.map((layer) => `${layer}: ${task.tags?.[layer] || "-"}`).join(" · ");
+}
+
+function formatStats(stats = {}) {
+  const entries = Object.entries(stats);
+  if (!entries.length) return "-";
+  return entries.map(([stat, value]) => `${stat.toUpperCase()} +${value}`).join(" · ");
 }
 
 function makeTrackingCard({ title, time, subtitle, isDoneToday, onComplete }) {
@@ -84,10 +101,10 @@ function makeTrackingCard({ title, time, subtitle, isDoneToday, onComplete }) {
 }
 
 function makeBoardCard({ task, taskId, onMove }) {
-  const status = statusLabel(task.status, task.completed);
+  const status = task.status || "todo";
   const card = document.createElement("article");
   card.className = "work-card kanban-card";
-  card.draggable = true;
+  card.draggable = status !== "completed" && status !== "failed";
   card.dataset.taskId = taskId;
 
   const heading = document.createElement("h4");
@@ -100,9 +117,9 @@ function makeBoardCard({ task, taskId, onMove }) {
   badge.textContent = `[${STATUS_LABELS[status] || status}]`;
   statusMeta.appendChild(badge);
 
-  const created = document.createElement("p");
-  created.className = "work-card-time";
-  created.textContent = `Created: ${formatDate(task.createdAt)}`;
+  const details = document.createElement("p");
+  details.className = "work-card-time";
+  details.textContent = `${task.durationMinutes || 0} min · ${PRIORITY_LABELS[task.priority] || task.priority}`;
 
   const arrows = document.createElement("div");
   arrows.className = "kanban-arrows";
@@ -131,9 +148,13 @@ function makeBoardCard({ task, taskId, onMove }) {
   });
 
   arrows.append(prev, next);
-  card.append(heading, statusMeta, created, arrows);
+  card.append(heading, statusMeta, details, arrows);
 
   return card;
+}
+
+function parseDuration(input) {
+  return Number(input || 0);
 }
 
 export function initTasks(elements, notifyError) {
@@ -195,6 +216,18 @@ export function initTasks(elements, notifyError) {
     elements.dailyProgressText.textContent = `${completedCount}/${rows.length} completed`;
   }
 
+  async function moveTask(taskId, task, nextStatus) {
+    try {
+      if (nextStatus === "completed") {
+        await markTaskComplete(taskId, task);
+        return;
+      }
+      await updateTask(taskId, { status: nextStatus });
+    } catch (error) {
+      notifyError(error, "Failed to update task status");
+    }
+  }
+
   function renderKanban(tasks) {
     const columns = KANBAN_COLUMNS.reduce((acc, col) => {
       acc[col.key] = elements[col.elementKey];
@@ -205,24 +238,20 @@ export function initTasks(elements, notifyError) {
       if (el) el.innerHTML = "";
     });
 
-    const taskRows = Object.entries(tasks).filter(([, task]) => isBoardTask(task));
+    const taskRows = Object.entries(tasks).filter(
+      ([, task]) => isBoardTask(task) && task.status !== "skipped",
+    );
 
     taskRows.forEach(([id, task]) => {
-      const status = statusLabel(task.status, task.completed);
-      const bucket = columns[status] || columns.backlog;
+      const status = task.status || "todo";
+      const bucket = columns[status] || columns.todo;
       if (!bucket) return;
 
       const li = document.createElement("li");
       const card = makeBoardCard({
         task,
         taskId: id,
-        onMove: async (nextStatus) => {
-          try {
-            await updateTask(id, { status: nextStatus });
-          } catch (error) {
-            notifyError(error, "Failed to update task status");
-          }
-        },
+        onMove: async (nextStatus) => moveTask(id, task, nextStatus),
       });
       card.addEventListener("dragstart", (event) => {
         event.dataTransfer.setData("text/plain", id);
@@ -242,29 +271,39 @@ export function initTasks(elements, notifyError) {
         event.preventDefault();
         const taskId = event.dataTransfer.getData("text/plain");
         if (!taskId || !taskMap[taskId]) return;
-        try {
-          await updateTask(taskId, { status: key });
-        } catch (error) {
-          notifyError(error, "Failed to update task status");
-        }
+        await moveTask(taskId, taskMap[taskId], key);
       });
     });
   }
 
+  function collectTaskInput() {
+    return {
+      title: elements.taskInput.value,
+      durationMinutes: parseDuration(elements.taskDurationInput.value),
+      priority: elements.taskPriorityInput.value,
+      tags: buildTaskTagsFromInputs({
+        domain: elements.taskDomainInput.value,
+        nature: elements.taskNatureInput.value,
+        intent: elements.taskIntentInput.value,
+      }),
+      schedule: elements.taskScheduleInput.value,
+    };
+  }
+
+  function resetTaskForm() {
+    elements.taskInput.value = "";
+    elements.taskDurationInput.value = "60";
+    elements.taskScheduleInput.value = "";
+    elements.taskPriorityInput.value = "important";
+    elements.taskDomainInput.value = "work";
+    elements.taskNatureInput.value = "deep_work";
+    elements.taskIntentInput.value = "build";
+  }
+
   async function addTask() {
     try {
-      await createTask({
-        title: elements.taskInput.value,
-        description: elements.taskDescriptionInput.value,
-        condition: elements.taskConditionInput.value,
-        type: elements.taskTypeInput.value,
-        priority: elements.taskPriorityInput.value,
-        schedule: elements.taskScheduleInput.value,
-      });
-      elements.taskInput.value = "";
-      elements.taskDescriptionInput.value = "";
-      elements.taskConditionInput.value = "";
-      elements.taskScheduleInput.value = "";
+      await createTask(collectTaskInput());
+      resetTaskForm();
       elements.taskCreationPanel.classList.remove("is-open");
     } catch (error) {
       notifyError(error, "Failed to add task");
@@ -274,13 +313,15 @@ export function initTasks(elements, notifyError) {
   async function editTask(taskId, task) {
     const title = prompt("Edit task title:", task.title || "");
     if (title === null) return;
-    const description = prompt("Edit task description:", task.description || "");
-    if (description === null) return;
-    const condition = prompt("Edit condition:", task.condition || "");
-    if (condition === null) return;
-    const type = prompt("Edit tag/type:", task.type || "task");
-    if (type === null) return;
-    const priority = prompt("Edit priority:", task.priority || "medium");
+    const durationMinutes = prompt("Edit duration in minutes:", String(task.durationMinutes || 60));
+    if (durationMinutes === null) return;
+    const domain = prompt("Edit domain tag:", task.tags?.domain || "work");
+    if (domain === null) return;
+    const nature = prompt("Edit nature tag:", task.tags?.nature || "deep_work");
+    if (nature === null) return;
+    const intent = prompt("Edit intent tag:", task.tags?.intent || "build");
+    if (intent === null) return;
+    const priority = prompt("Edit priority:", task.priority || "important");
     if (priority === null) return;
     const schedule = prompt(
       "Edit schedule (YYYY-MM-DDTHH:mm, blank to clear):",
@@ -291,9 +332,12 @@ export function initTasks(elements, notifyError) {
     try {
       await updateTask(taskId, {
         title: title.trim() || task.title,
-        description,
-        condition,
-        type: type.trim() || task.type,
+        durationMinutes: Number(durationMinutes),
+        tags: {
+          domain: domain.trim() || task.tags?.domain,
+          nature: nature.trim() || task.tags?.nature,
+          intent: intent.trim() || task.tags?.intent,
+        },
         priority: priority.trim() || task.priority,
         schedule: schedule.trim() ? schedule.trim() : null,
       });
@@ -303,7 +347,7 @@ export function initTasks(elements, notifyError) {
   }
 
   async function completeTask(taskId, task) {
-    if (task.completed) return;
+    if (task.status === "completed") return;
     try {
       await markTaskComplete(taskId, task);
     } catch (error) {
@@ -339,7 +383,7 @@ export function initTasks(elements, notifyError) {
       taskRows
         .sort(([, a], [, b]) => (b.createdAt || 0) - (a.createdAt || 0))
         .forEach(([id, task]) => {
-          const status = statusLabel(task.status, task.completed);
+          const status = task.status || "todo";
           const li = document.createElement("li");
 
           const card = document.createElement("article");
@@ -351,9 +395,12 @@ export function initTasks(elements, notifyError) {
           meta.className = "work-card-meta";
           [
             `Status: ${STATUS_LABELS[status] || status}`,
-            `Tag: ${task.type || "task"}`,
-            `Priority: ${task.priority || "medium"}`,
-            `Time: ${task.schedule?.specificAt ? formatDate(task.schedule.specificAt) : "-"}`,
+            `Priority: ${PRIORITY_LABELS[task.priority] || task.priority}`,
+            `Duration: ${task.durationMinutes || 0} min (x${getDurationMultiplier(task.durationMinutes || 0)})`,
+            `Tags: ${formatTaskTags(task)}`,
+            `Base Stats: ${formatStats(task.baseStats)}`,
+            `Reward: ${formatStats(task.reward)}`,
+            `Scheduled: ${task.schedule?.specificAt ? formatDate(task.schedule.specificAt) : "-"}`,
             `Created: ${formatDate(task.createdAt)}`,
             `Completed: ${task.completedAt ? formatDate(task.completedAt) : "-"}`,
           ].forEach((m) => {
@@ -367,22 +414,30 @@ export function initTasks(elements, notifyError) {
           [
             {
               label: "Complete",
-              className: task.completed ? "btn-muted" : "",
+              className: task.status === "completed" ? "btn-muted" : "",
               onClick: () => completeTask(id, task),
             },
             { label: "Edit", onClick: () => editTask(id, task) },
             {
+              label: "Skip",
+              className: "btn-muted",
+              onClick: () =>
+                updateTask(id, { status: "skipped" }).catch((e) =>
+                  notifyError(e, "Failed to skip task"),
+                ),
+            },
+            {
+              label: "Fail",
+              className: "btn-danger",
+              onClick: () =>
+                updateTask(id, { status: "failed" }).catch((e) =>
+                  notifyError(e, "Failed to fail task"),
+                ),
+            },
+            {
               label: "Delete",
               className: "btn-danger",
               onClick: () => deleteTask(id).catch((e) => notifyError(e, "Failed to delete task")),
-            },
-            {
-              label: "Cancel",
-              className: "btn-muted",
-              onClick: () =>
-                updateTask(id, { status: "cancelled" }).catch((e) =>
-                  notifyError(e, "Failed to cancel task"),
-                ),
             },
           ].forEach(({ label, className, onClick }) => {
             const btn = document.createElement("button");
@@ -397,18 +452,7 @@ export function initTasks(elements, notifyError) {
           elements.taskList.appendChild(li);
         });
 
-      const grouped = {
-        backlog: taskRows.filter(
-          ([, task]) => statusLabel(task.status, task.completed) === "backlog",
-        ),
-        todo: taskRows.filter(([, task]) => statusLabel(task.status, task.completed) === "todo"),
-        in_progress: taskRows.filter(
-          ([, task]) => statusLabel(task.status, task.completed) === "in_progress",
-        ),
-        done: taskRows.filter(([, task]) => statusLabel(task.status, task.completed) === "done"),
-      };
-
-      renderKanban(Object.fromEntries(Object.values(grouped).flat()));
+      renderKanban(Object.fromEntries(taskRows));
     });
   }
 
