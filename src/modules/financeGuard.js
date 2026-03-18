@@ -8,6 +8,10 @@ export function initFinanceGuard(elements) {
   const unlockBtn = elements.financeUnlockBtn;
   const cancelBtn = elements.financeCancelBtn;
 
+  if (modal) {
+    modal.hidden = true;
+  }
+
   function closeModal() {
     modal.hidden = true;
     input.value = "";
