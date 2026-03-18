@@ -2,7 +2,6 @@ import { activityApi, tasksApi, dailyTasksApi, habitsApi, calendarApi } from "..
 import { initRewardEngine } from "../core/rewardEngine.js";
 import { initStats } from "../modules/stats.js";
 import { initTasks } from "../modules/tasks.js";
-import { initHabits } from "../modules/habits.js";
 import { initFinance } from "../modules/finance.js";
 import { initCalendar } from "../modules/calendar.js";
 import { initFocus } from "../modules/focus.js";
@@ -49,14 +48,9 @@ const elements = {
   dailyTaskList: document.getElementById("dailyTaskList"),
   dailyProgressText: document.getElementById("dailyProgressText"),
   dailyTrackingTabs: document.getElementById("dailyTrackingTabs"),
-  habitTrackingTabs: document.getElementById("habitTrackingTabs"),
-  habitList: document.getElementById("habitList"),
   settingsAddDailyTaskBtn: document.getElementById("settingsAddDailyTaskBtn"),
   settingsDailyTaskCreationArea: document.getElementById("settingsDailyTaskCreationArea"),
   settingsDailyTaskList: document.getElementById("settingsDailyTaskList"),
-  settingsAddHabitBtn: document.getElementById("settingsAddHabitBtn"),
-  settingsHabitCreationArea: document.getElementById("settingsHabitCreationArea"),
-  settingsHabitList: document.getElementById("settingsHabitList"),
   resetTasksBtn: document.getElementById("resetTasksBtn"),
   resetStatsBtn: document.getElementById("resetStatsBtn"),
   resetDatabaseBtn: document.getElementById("resetDatabaseBtn"),
@@ -213,14 +207,14 @@ function renderTodaySummary(data) {
     (task) => task && task.type !== "daily" && task.type !== "habit",
   );
   const completedTasks = tasks.filter((task) => task.completed || task.status === "done").length;
-  const dueTodayHabits = Object.values(data.habits || {}).filter((habit) =>
-    isWeeklyHabitDueOnDate(habit, new Date()),
-  ).length;
+  const dueTodayRoutines = [
+    ...Object.values(data.dailyTasks || {}),
+    ...Object.values(data.habits || {}),
+  ].filter((item) => isWeeklyHabitDueOnDate(item, new Date())).length;
   const rows = [
-    `Daily tasks: ${Object.keys(data.dailyTasks || {}).length}`,
+    `Routines today: ${dueTodayRoutines}`,
     `Open tasks: ${Math.max(0, tasks.length - completedTasks)}`,
     `Completed tasks: ${completedTasks}`,
-    `Habits tracked: ${dueTodayHabits}`,
   ];
 
   elements.todaySummaryList.innerHTML = "";
@@ -316,7 +310,6 @@ function init() {
   initRewardEngine({ notifyError });
   initStats(elements);
   initTasks(elements, notifyError);
-  initHabits(elements, notifyError);
   initSettings(elements, notifyError);
   initNotes(elements, notifyError);
   initFinance(elements, notifyError);

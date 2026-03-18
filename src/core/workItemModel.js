@@ -4,6 +4,18 @@ const STATUS_VALUES = ["backlog", "todo", "in_progress", "done", "cancelled"];
 const PRIORITY_VALUES = ["low", "medium", "high"];
 const TYPE_VALUES = ["task", "daily", "habit", "work", "personal", "study"];
 
+function normalizeDaysOfWeek(input) {
+  const values = Array.isArray(input) ? input : [input];
+
+  return [
+    ...new Set(
+      values
+        .map((value) => Number(value))
+        .filter((value) => Number.isInteger(value) && value >= 0 && value <= 6),
+    ),
+  ].sort((a, b) => a - b);
+}
+
 export function normalizeSchedule(scheduleInput) {
   if (!scheduleInput) return null;
 
@@ -12,9 +24,15 @@ export function normalizeSchedule(scheduleInput) {
       return { mode: "daily", time: String(scheduleInput.time || "09:00") };
     }
     if (scheduleInput.mode === "weekly") {
+      const daysOfWeek = normalizeDaysOfWeek(scheduleInput.daysOfWeek ?? scheduleInput.dayOfWeek);
+      if (!daysOfWeek.length) {
+        throw new Error("Weekly schedule must include at least one day.");
+      }
+
       return {
         mode: "weekly",
-        dayOfWeek: Number(scheduleInput.dayOfWeek ?? 1),
+        dayOfWeek: daysOfWeek[0],
+        daysOfWeek,
         time: String(scheduleInput.time || "09:00"),
       };
     }

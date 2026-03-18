@@ -5,12 +5,18 @@ import {
   deleteDailyTask,
   subscribeDailyTasks,
 } from "../services/dailyTaskService.js";
-import {
-  createHabit,
-  updateHabit,
-  deleteHabit,
-  subscribeHabits,
-} from "../services/habitService.js";
+import { updateHabit, deleteHabit, subscribeHabits } from "../services/habitService.js";
+import { getScheduledDays } from "../core/habitLogic.js";
+
+const DAY_OPTIONS = [
+  [1, "Mon"],
+  [2, "Tue"],
+  [3, "Wed"],
+  [4, "Thu"],
+  [5, "Fri"],
+  [6, "Sat"],
+  [0, "Sun"],
+];
 
 function askDoubleConfirmation(label) {
   const confirmed = window.confirm(`Are you sure you want to ${label}?`);
@@ -19,9 +25,49 @@ function askDoubleConfirmation(label) {
   return text === "RESET";
 }
 
+function formatRoutineSchedule(item) {
+  const time = item.schedule?.time || "--:--";
+  const days = getScheduledDays(item.schedule);
+  if (!days.length) return `Every day · ${time}`;
+
+  const labels = DAY_OPTIONS.filter(([value]) => days.includes(value)).map(([, label]) => label);
+  return `${labels.join(", ")} · ${time}`;
+}
+
+function makeDaySelector(selectedDays = []) {
+  const wrapper = document.createElement("div");
+  wrapper.className = "day-selector";
+  const selected = new Set(selectedDays.map((day) => Number(day)));
+
+  DAY_OPTIONS.forEach(([value, label]) => {
+    const chip = document.createElement("label");
+    chip.className = "day-chip";
+
+    const input = document.createElement("input");
+    input.type = "checkbox";
+    input.value = String(value);
+    input.checked = selected.has(value);
+
+    const text = document.createElement("span");
+    text.textContent = label;
+
+    chip.append(input, text);
+    wrapper.appendChild(chip);
+  });
+
+  return wrapper;
+}
+
+function readSelectedDays(root) {
+  return [...root.querySelectorAll('input[type="checkbox"]:checked')].map((input) =>
+    Number(input.value),
+  );
+}
+
 export function initSettings(elements, notifyError) {
   let isDailyCreationOpen = false;
-  let isHabitCreationOpen = false;
+  let dailyTasksById = {};
+  let habitsById = {};
 
   function renderDailyCreationCard() {
     elements.settingsDailyTaskCreationArea.innerHTML = "";
@@ -31,11 +77,17 @@ export function initSettings(elements, notifyError) {
     card.className = "work-card creation-card";
 
     const title = document.createElement("input");
-    title.placeholder = "Daily task title";
+    title.placeholder = "Task title";
 
     const time = document.createElement("input");
     time.type = "time";
     time.value = "09:00";
+
+    const dayHint = document.createElement("p");
+    dayHint.className = "field-hint";
+    dayHint.textContent = "Pick days to run. Leave all unchecked for every day.";
+
+    const days = makeDaySelector();
 
     const description = document.createElement("input");
     description.placeholder = "Description optional";
@@ -50,6 +102,7 @@ export function initSettings(elements, notifyError) {
         await createDailyTask({
           title: title.value,
           time: time.value,
+          daysOfWeek: readSelectedDays(days),
           condition: description.value,
         });
         isDailyCreationOpen = false;
@@ -68,79 +121,65 @@ export function initSettings(elements, notifyError) {
     });
 
     actions.append(createBtn, cancelBtn);
-    card.append(title, time, description, actions);
+    card.append(title, time, dayHint, days, description, actions);
     elements.settingsDailyTaskCreationArea.appendChild(card);
   }
 
-  function renderHabitCreationCard() {
-    elements.settingsHabitCreationArea.innerHTML = "";
-    if (!isHabitCreationOpen) return;
+  async function editRoutine(id, item, source) {
+    const nextTitle = prompt("Title:", item.title || "");
+    if (nextTitle === null) return;
+    const nextTime = prompt("Time (HH:mm):", item.schedule?.time || "09:00");
+    if (nextTime === null) return;
+    const nextDays = prompt(
+      "Days of week (comma separated 0-6, blank = every day):",
+      getScheduledDays(item.schedule).join(","),
+    );
+    if (nextDays === null) return;
+    const nextDescription = prompt("Description:", item.condition || "");
+    if (nextDescription === null) return;
 
-    const card = document.createElement("article");
-    card.className = "work-card creation-card";
+    const daysOfWeek = nextDays
+      .split(",")
+      .map((value) => value.trim())
+      .filter(Boolean)
+      .map((value) => Number(value));
 
-    const title = document.createElement("input");
-    title.placeholder = "Habit title";
-
-    const day = document.createElement("select");
-    [
-      [1, "Monday"],
-      [2, "Tuesday"],
-      [3, "Wednesday"],
-      [4, "Thursday"],
-      [5, "Friday"],
-      [6, "Saturday"],
-      [0, "Sunday"],
-    ].forEach(([value, label]) => {
-      const opt = document.createElement("option");
-      opt.value = String(value);
-      opt.textContent = label;
-      day.appendChild(opt);
-    });
-
-    const time = document.createElement("input");
-    time.type = "time";
-    time.value = "09:00";
-
-    const description = document.createElement("input");
-    description.placeholder = "Description optional";
-
-    const actions = document.createElement("div");
-    actions.className = "item-actions";
-
-    const createBtn = document.createElement("button");
-    createBtn.textContent = "Create";
-    createBtn.addEventListener("click", async () => {
-      try {
-        await createHabit({
-          title: title.value,
-          dayOfWeek: Number(day.value),
-          time: time.value,
-          condition: description.value,
+    try {
+      if (source === "habit") {
+        if (daysOfWeek.length > 1) {
+          throw new Error(
+            "Legacy habits can only keep one scheduled day. Create a daily task for multi-day routines.",
+          );
+        }
+        await updateHabit(id, {
+          title: nextTitle,
+          dayOfWeek: daysOfWeek[0] ?? item.schedule?.dayOfWeek ?? 1,
+          time: nextTime,
+          condition: nextDescription,
         });
-        isHabitCreationOpen = false;
-        renderHabitCreationCard();
-      } catch (error) {
-        notifyError(error, "Failed to create habit");
+        return;
       }
-    });
 
-    const cancelBtn = document.createElement("button");
-    cancelBtn.textContent = "Cancel";
-    cancelBtn.className = "btn-muted";
-    cancelBtn.addEventListener("click", () => {
-      isHabitCreationOpen = false;
-      renderHabitCreationCard();
-    });
-
-    actions.append(createBtn, cancelBtn);
-    card.append(title, day, time, description, actions);
-    elements.settingsHabitCreationArea.appendChild(card);
+      await updateDailyTask(id, {
+        title: nextTitle,
+        time: nextTime,
+        daysOfWeek,
+        condition: nextDescription,
+      });
+    } catch (error) {
+      notifyError(error, "Failed to edit routine");
+    }
   }
 
-  function renderDailyList(tasks = {}) {
+  function renderRoutineList() {
     elements.settingsDailyTaskList.innerHTML = "";
-    Object.entries(tasks).forEach(([id, task]) => {
+
+    const merged = [
+      ...Object.entries(dailyTasksById).map(([id, task]) => [id, task, "daily"]),
+      ...Object.entries(habitsById).map(([id, task]) => [id, task, "habit"]),
+    ].sort((a, b) => (b[1]?.createdAt || 0) - (a[1]?.createdAt || 0));
+
+    merged.forEach(([id, task, source]) => {
       const li = document.createElement("li");
       const card = document.createElement("article");
       card.className = "work-card";
@@ -152,100 +191,33 @@ export function initSettings(elements, notifyError) {
       const meta = document.createElement("div");
       meta.className = "work-card-meta";
       const schedule = document.createElement("span");
-      schedule.textContent = `Daily ${task.schedule?.time || "--:--"}`;
+      schedule.textContent = formatRoutineSchedule(task);
       meta.appendChild(schedule);
+
+      const desc = document.createElement("p");
+      desc.className = "work-card-time";
+      desc.textContent =
+        task.condition || (source === "habit" ? "Imported from habits" : "No description");
 
       const actions = document.createElement("div");
       actions.className = "item-actions";
 
       const editBtn = document.createElement("button");
       editBtn.textContent = "Edit";
-      editBtn.addEventListener("click", async () => {
-        const nextTitle = prompt("Title:", task.title || "");
-        if (nextTitle === null) return;
-        const nextTime = prompt("Time (HH:mm):", task.schedule?.time || "09:00");
-        if (nextTime === null) return;
-        const nextDescription = prompt("Description:", task.condition || "");
-        if (nextDescription === null) return;
-        try {
-          await updateDailyTask(id, {
-            title: nextTitle,
-            time: nextTime,
-            condition: nextDescription,
-          });
-        } catch (error) {
-          notifyError(error, "Failed to edit daily task");
-        }
-      });
+      editBtn.addEventListener("click", () => editRoutine(id, task, source));
 
       const deleteBtn = document.createElement("button");
       deleteBtn.textContent = "Delete";
       deleteBtn.className = "btn-danger";
-      deleteBtn.addEventListener("click", () =>
-        deleteDailyTask(id).catch((error) => notifyError(error, "Failed to delete daily task")),
-      );
+      deleteBtn.addEventListener("click", () => {
+        const work = source === "habit" ? deleteHabit(id) : deleteDailyTask(id);
+        work.catch((error) => notifyError(error, "Failed to delete routine"));
+      });
 
       actions.append(editBtn, deleteBtn);
-      card.append(title, meta, actions);
+      card.append(title, meta, desc, actions);
       li.appendChild(card);
       elements.settingsDailyTaskList.appendChild(li);
-    });
-  }
-
-  function renderHabitList(habits = {}) {
-    elements.settingsHabitList.innerHTML = "";
-    Object.entries(habits).forEach(([id, habit]) => {
-      const li = document.createElement("li");
-      const card = document.createElement("article");
-      card.className = "work-card";
-
-      const title = document.createElement("h4");
-      title.className = "work-card-title";
-      title.textContent = habit.title;
-
-      const meta = document.createElement("div");
-      meta.className = "work-card-meta";
-      const schedule = document.createElement("span");
-      schedule.textContent = `D${habit.schedule?.dayOfWeek ?? "?"} ${habit.schedule?.time || "--:--"}`;
-      meta.appendChild(schedule);
-
-      const actions = document.createElement("div");
-      actions.className = "item-actions";
-
-      const editBtn = document.createElement("button");
-      editBtn.textContent = "Edit";
-      editBtn.addEventListener("click", async () => {
-        const nextTitle = prompt("Title:", habit.title || "");
-        if (nextTitle === null) return;
-        const nextDay = prompt("Day of week (0-6):", String(habit.schedule?.dayOfWeek ?? 1));
-        if (nextDay === null) return;
-        const nextTime = prompt("Time (HH:mm):", habit.schedule?.time || "09:00");
-        if (nextTime === null) return;
-        const nextDescription = prompt("Description:", habit.condition || "");
-        if (nextDescription === null) return;
-        try {
-          await updateHabit(id, {
-            title: nextTitle,
-            dayOfWeek: Number(nextDay),
-            time: nextTime,
-            condition: nextDescription,
-          });
-        } catch (error) {
-          notifyError(error, "Failed to edit habit");
-        }
-      });
-
-      const deleteBtn = document.createElement("button");
-      deleteBtn.textContent = "Delete";
-      deleteBtn.className = "btn-danger";
-      deleteBtn.addEventListener("click", () =>
-        deleteHabit(id).catch((error) => notifyError(error, "Failed to delete habit")),
-      );
-
-      actions.append(editBtn, deleteBtn);
-      card.append(title, meta, actions);
-      li.appendChild(card);
-      elements.settingsHabitList.appendChild(li);
     });
   }
 
@@ -254,17 +226,12 @@ export function initSettings(elements, notifyError) {
     renderDailyCreationCard();
   });
 
-  elements.settingsAddHabitBtn.addEventListener("click", () => {
-    isHabitCreationOpen = !isHabitCreationOpen;
-    renderHabitCreationCard();
-  });
-
   elements.resetTasksBtn.addEventListener("click", async () => {
-    if (!askDoubleConfirmation("reset tasks")) return;
+    if (!askDoubleConfirmation("reset all task data")) return;
     try {
       await resetTasksDomain();
     } catch (error) {
-      notifyError(error, "Failed to reset tasks");
+      notifyError(error, "Failed to reset task data");
     }
   });
 
@@ -286,8 +253,16 @@ export function initSettings(elements, notifyError) {
     }
   });
 
+  renderDailyCreationCard();
+
   return [
-    subscribeDailyTasks((tasks) => renderDailyList(tasks || {})),
-    subscribeHabits((habits) => renderHabitList(habits || {})),
+    subscribeDailyTasks((tasks) => {
+      dailyTasksById = tasks || {};
+      renderRoutineList();
+    }),
+    subscribeHabits((habits) => {
+      habitsById = habits || {};
+      renderRoutineList();
+    }),
   ];
 }

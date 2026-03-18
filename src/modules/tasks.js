@@ -3,6 +3,7 @@ import {
   subscribeDailyTasks,
   resetDailyTasksForToday,
 } from "../services/dailyTaskService.js";
+import { completeHabit, subscribeHabits, resetHabitsForToday } from "../services/habitService.js";
 import {
   createTask,
   updateTask,
@@ -10,6 +11,7 @@ import {
   completeTask as markTaskComplete,
   subscribeTasks,
 } from "../services/taskService.js";
+import { getScheduledDays, isScheduledOnDate, toDayString } from "../core/habitLogic.js";
 
 const STATUS_LABELS = {
   backlog: "Backlog",
@@ -41,7 +43,21 @@ function statusLabel(status, completed) {
   return completed ? "done" : "backlog";
 }
 
-function makeTrackingCard({ title, time, isDoneToday, onComplete }) {
+function formatScheduleForInput(schedule) {
+  if (!schedule?.specificAt) return "";
+  const date = new Date(schedule.specificAt);
+  const offset = date.getTimezoneOffset();
+  const local = new Date(date.getTime() - offset * 60 * 1000);
+  return local.toISOString().slice(0, 16);
+}
+
+function formatRoutineDays(task) {
+  const days = getScheduledDays(task.schedule);
+  if (!days.length) return "Every day";
+  return `Days: ${days.join(",")}`;
+}
+
+function makeTrackingCard({ title, time, subtitle, isDoneToday, onComplete }) {
   const card = document.createElement("article");
   card.className = "work-card";
 
@@ -51,7 +67,7 @@ function makeTrackingCard({ title, time, isDoneToday, onComplete }) {
 
   const timeText = document.createElement("p");
   timeText.className = "work-card-time";
-  timeText.textContent = time || "--:--";
+  timeText.textContent = `${time || "--:--"} · ${subtitle}`;
 
   const actions = document.createElement("div");
   actions.className = "item-actions";
@@ -59,6 +75,7 @@ function makeTrackingCard({ title, time, isDoneToday, onComplete }) {
   const completeBtn = document.createElement("button");
   completeBtn.textContent = isDoneToday ? "Completed" : "Complete";
   completeBtn.className = isDoneToday ? "btn-muted" : "";
+  completeBtn.disabled = isDoneToday;
   completeBtn.addEventListener("click", onComplete);
 
   actions.appendChild(completeBtn);
@@ -122,6 +139,7 @@ function makeBoardCard({ task, taskId, onMove }) {
 export function initTasks(elements, notifyError) {
   let taskMap = {};
   let dailyTasksById = {};
+  let habitsById = {};
   let boardDropBound = false;
   let activeDailyTab = "active";
 
@@ -131,14 +149,23 @@ export function initTasks(elements, notifyError) {
     });
   }
 
+  function getRoutineRows() {
+    const today = new Date();
+
+    return [
+      ...Object.entries(dailyTasksById).map(([id, task]) => ({ id, task, source: "daily" })),
+      ...Object.entries(habitsById).map(([id, task]) => ({ id, task, source: "habit" })),
+    ].filter(({ task }) => isScheduledOnDate(task, today));
+  }
+
   function renderDailyTracking() {
     elements.dailyTaskList.innerHTML = "";
-    const rows = Object.entries(dailyTasksById);
-    const today = new Date().toDateString();
+    const rows = getRoutineRows();
+    const todayKey = toDayString(new Date());
     let completedCount = 0;
 
-    rows.forEach(([id, task]) => {
-      const isDoneToday = task.lastCompleted === today;
+    rows.forEach(({ id, task, source }) => {
+      const isDoneToday = task.lastCompleted === todayKey;
       if (isDoneToday) completedCount += 1;
 
       const hiddenByTab =
@@ -151,9 +178,15 @@ export function initTasks(elements, notifyError) {
         makeTrackingCard({
           title: task.title,
           time: task.schedule?.time,
+          subtitle: formatRoutineDays(task),
           isDoneToday,
-          onComplete: () =>
-            completeDailyTask(id).catch((e) => notifyError(e, "Failed to complete daily task")),
+          onComplete: () => {
+            const work =
+              source === "habit"
+                ? completeHabit(id, task).catch((e) => notifyError(e, "Failed to complete routine"))
+                : completeDailyTask(id).catch((e) => notifyError(e, "Failed to complete routine"));
+            return work;
+          },
         }),
       );
       elements.dailyTaskList.appendChild(li);
@@ -232,6 +265,7 @@ export function initTasks(elements, notifyError) {
       elements.taskDescriptionInput.value = "";
       elements.taskConditionInput.value = "";
       elements.taskScheduleInput.value = "";
+      elements.taskCreationPanel.classList.remove("is-open");
     } catch (error) {
       notifyError(error, "Failed to add task");
     }
@@ -244,12 +278,24 @@ export function initTasks(elements, notifyError) {
     if (description === null) return;
     const condition = prompt("Edit condition:", task.condition || "");
     if (condition === null) return;
+    const type = prompt("Edit tag/type:", task.type || "task");
+    if (type === null) return;
+    const priority = prompt("Edit priority:", task.priority || "medium");
+    if (priority === null) return;
+    const schedule = prompt(
+      "Edit schedule (YYYY-MM-DDTHH:mm, blank to clear):",
+      formatScheduleForInput(task.schedule),
+    );
+    if (schedule === null) return;
 
     try {
       await updateTask(taskId, {
         title: title.trim() || task.title,
         description,
         condition,
+        type: type.trim() || task.type,
+        priority: priority.trim() || task.priority,
+        schedule: schedule.trim() ? schedule.trim() : null,
       });
     } catch (error) {
       notifyError(error, "Failed to update task");
@@ -268,6 +314,13 @@ export function initTasks(elements, notifyError) {
   function loadDailyTasks() {
     return subscribeDailyTasks((tasks) => {
       dailyTasksById = tasks || {};
+      renderDailyTracking();
+    });
+  }
+
+  function loadHabits() {
+    return subscribeHabits((habits) => {
+      habitsById = habits || {};
       renderDailyTracking();
     });
   }
@@ -298,6 +351,9 @@ export function initTasks(elements, notifyError) {
           meta.className = "work-card-meta";
           [
             `Status: ${STATUS_LABELS[status] || status}`,
+            `Tag: ${task.type || "task"}`,
+            `Priority: ${task.priority || "medium"}`,
+            `Time: ${task.schedule?.specificAt ? formatDate(task.schedule.specificAt) : "-"}`,
             `Created: ${formatDate(task.createdAt)}`,
             `Completed: ${task.completedAt ? formatDate(task.completedAt) : "-"}`,
           ].forEach((m) => {
@@ -359,7 +415,7 @@ export function initTasks(elements, notifyError) {
   function scheduleDailyReset() {
     async function runReset() {
       try {
-        await resetDailyTasksForToday();
+        await Promise.all([resetDailyTasksForToday(), resetHabitsForToday()]);
       } catch (error) {
         notifyError(error, "Failed to reset daily tracking");
       }
@@ -389,5 +445,5 @@ export function initTasks(elements, notifyError) {
 
   scheduleDailyReset();
 
-  return [loadDailyTasks(), loadTasks()];
+  return [loadDailyTasks(), loadHabits(), loadTasks()];
 }
