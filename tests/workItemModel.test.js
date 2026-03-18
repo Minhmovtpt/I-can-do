@@ -8,3 +8,14 @@ test("task-like items default to backlog while recurring trackers default to tod
   assert.equal(createWorkItemPayload({ title: "Habit", type: "habit" }).status, "todo");
   assert.equal(createWorkItemPayload({ title: "Daily", type: "daily" }).status, "todo");
 });
+
+test("weekly schedules normalize multi-day selections", () => {
+  const payload = createWorkItemPayload({
+    title: "Routine",
+    type: "daily",
+    schedule: { mode: "weekly", daysOfWeek: [5, 1, 5], time: "08:00" },
+  });
+
+  assert.deepEqual(payload.schedule.daysOfWeek, [1, 5]);
+  assert.equal(payload.schedule.dayOfWeek, 1);
+});

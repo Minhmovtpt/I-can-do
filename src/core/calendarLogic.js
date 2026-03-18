@@ -1,4 +1,4 @@
-import { isWeeklyHabitDueOnDate, toDayString } from "./habitLogic.js";
+import { isScheduledOnDate, toDayString } from "./habitLogic.js";
 
 export function toDayKey(date) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
@@ -85,6 +85,7 @@ export function buildScheduledItems(days, tasks, dailyTasks, habits, calendarEve
 
   days.filter(Boolean).forEach((date) => {
     Object.values(dailyTasks || {}).forEach((task) => {
+      if (!isScheduledOnDate(task, date)) return;
       const { h, m } = parseTime(task?.schedule?.time);
       const at = new Date(date.getFullYear(), date.getMonth(), date.getDate(), h, m).getTime();
       add(date, {
@@ -98,7 +99,7 @@ export function buildScheduledItems(days, tasks, dailyTasks, habits, calendarEve
     });
 
     Object.values(habits || {}).forEach((habit) => {
-      if (!isWeeklyHabitDueOnDate(habit, date)) return;
+      if (!isScheduledOnDate(habit, date)) return;
       const { h, m } = parseTime(habit?.schedule?.time);
       const at = new Date(date.getFullYear(), date.getMonth(), date.getDate(), h, m).getTime();
       add(date, {

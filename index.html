@@ -133,16 +133,12 @@
             <div class="settings-grid">
               <section>
                 <h3>Daily Task Setup</h3>
+                <p class="section-subtitle">
+                  Create one routine list for daily and selected weekdays.
+                </p>
                 <button id="settingsAddDailyTaskBtn">+ Add Daily Task</button>
                 <div id="settingsDailyTaskCreationArea"></div>
                 <ul id="settingsDailyTaskList"></ul>
-              </section>
-
-              <section>
-                <h3>Habit Setup</h3>
-                <button id="settingsAddHabitBtn">+ Add Habit</button>
-                <div id="settingsHabitCreationArea"></div>
-                <ul id="settingsHabitList"></ul>
               </section>
 
               <section>
@@ -256,23 +252,13 @@
         </section>
 
         <section>
-          <h3>Daily Tasks <small id="dailyProgressText">0/0 completed</small></h3>
+          <h3>Daily Tasks & Routines <small id="dailyProgressText">0/0 completed</small></h3>
           <div class="tracking-tabs" id="dailyTrackingTabs">
             <button class="is-active" data-tab="active">Active</button>
             <button data-tab="completed">Completed</button>
             <button data-tab="all">All</button>
           </div>
           <ul id="dailyTaskList"></ul>
-        </section>
-
-        <section>
-          <h3>Habits</h3>
-          <div class="tracking-tabs" id="habitTrackingTabs">
-            <button class="is-active" data-tab="active">Active</button>
-            <button data-tab="completed">Completed</button>
-            <button data-tab="all">All</button>
-          </div>
-          <ul id="habitList"></ul>
         </section>
       </aside>
     </div>

@@ -14,7 +14,7 @@ test("month navigation advances by calendar month", () => {
   assert.equal(shifted.getUTCDate(), 1);
 });
 
-test("scheduled items include calendar events and weekly habits only on due dates", () => {
+test("scheduled items include recurring routines on matching days only", () => {
   const day = new Date("2026-03-16T00:00:00Z");
   const events = buildScheduledItems(
     [day],
@@ -25,11 +25,15 @@ test("scheduled items include calendar events and weekly habits only on due date
       },
     },
     {
-      daily1: { title: "Daily", schedule: { time: "08:30" } },
+      daily1: { title: "Daily", schedule: { mode: "daily", time: "08:30" } },
+      weekly1: {
+        title: "Mon routine",
+        schedule: { mode: "weekly", daysOfWeek: [1], time: "07:45" },
+      },
+      weekly2: { title: "Wrong day", schedule: { mode: "weekly", daysOfWeek: [2], time: "12:00" } },
     },
     {
-      habit1: { title: "Weekly", schedule: { dayOfWeek: 1, time: "09:00" } },
-      habit2: { title: "Wrong day", schedule: { dayOfWeek: 2, time: "09:00" } },
+      habit1: { title: "Legacy habit", schedule: { dayOfWeek: 1, time: "09:00" } },
     },
     {
       event1: {
@@ -41,7 +45,13 @@ test("scheduled items include calendar events and weekly habits only on due date
   );
 
   const rows = events.get(toDayKey(day)) || [];
-  assert.deepEqual(rows.map((row) => row.kind).sort(), ["daily", "event", "habit", "task"]);
+  assert.deepEqual(rows.map((row) => row.title).sort(), [
+    "Daily",
+    "Legacy habit",
+    "Meeting",
+    "Mon routine",
+    "Task",
+  ]);
 });
 
 test("calendar status only exposes pending or completed", () => {
