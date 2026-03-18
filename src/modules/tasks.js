@@ -400,7 +400,6 @@ export function initTasks(elements, notifyError) {
             `Tags: ${formatTaskTags(task)}`,
             `Base Stats: ${formatStats(task.baseStats)}`,
             `Reward: ${formatStats(task.reward)}`,
-            `Capped Stats: ${task.omittedStats?.length ? task.omittedStats.map((stat) => stat.toUpperCase()).join(", ") : "-"}`,
             `Scheduled: ${task.schedule?.specificAt ? formatDate(task.schedule.specificAt) : "-"}`,
             `Created: ${formatDate(task.createdAt)}`,
             `Completed: ${task.completedAt ? formatDate(task.completedAt) : "-"}`,

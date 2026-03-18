@@ -58,7 +58,6 @@ Standalone tasks now use a stat-based model in `src/core/workItemModel.js`:
 ```
 
 `Daily Task` and `Habit` items still share a recurring-work model with `type`, `schedule`, and `condition` metadata.
-If a task tag combination would affect more than 3 stats, the system now keeps the strongest 3 stat contributions instead of blocking task creation.
 
 Schedule modes currently used:
 

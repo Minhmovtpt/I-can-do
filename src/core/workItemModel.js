@@ -120,8 +120,6 @@ export function getDurationMultiplier(durationMinutes) {
   return 1.5;
 }
 
-const TASK_STAT_ORDER = ["atk", "int", "disc", "cre", "end", "foc", "wis"];
-
 function mergeStats(target, source) {
   Object.entries(source).forEach(([stat, value]) => {
     target[stat] = roundStat((target[stat] || 0) + value);
@@ -129,32 +127,25 @@ function mergeStats(target, source) {
   return target;
 }
 
-function compareStats([leftStat, leftValue], [rightStat, rightValue]) {
-  if (rightValue !== leftValue) {
-    return rightValue - leftValue;
-  }
-
-  return TASK_STAT_ORDER.indexOf(leftStat) - TASK_STAT_ORDER.indexOf(rightStat);
-}
-
 export function getTaskBaseStats(tags) {
   const normalizedTags = normalizeTaskTags(tags);
-  const mergedStats = TASK_TAG_LAYERS.reduce((stats, layer) => {
+  const baseStats = TASK_TAG_LAYERS.reduce((stats, layer) => {
     return mergeStats(stats, TASK_TAGS[layer][normalizedTags[layer]]);
   }, {});
 
-  const rankedStats = Object.entries(mergedStats).sort(compareStats);
-  const baseStats = Object.fromEntries(rankedStats.slice(0, 3));
-  const omittedStats = rankedStats.slice(3).map(([stat]) => stat);
+  const affectedStats = Object.keys(baseStats);
+  if (affectedStats.length > 3) {
+    throw new Error("Task tags must affect at most 3 unique stats.");
+  }
 
-  return { baseStats, omittedStats };
+  return baseStats;
 }
 
 export function calculateTaskReward(task) {
   const durationMinutes = normalizeDurationMinutes(task.durationMinutes);
   const priority = requireEnum(task.priority, TASK_PRIORITY_VALUES, "Priority");
   const tags = normalizeTaskTags(task.tags);
-  const { baseStats, omittedStats } = getTaskBaseStats(tags);
+  const baseStats = getTaskBaseStats(tags);
   const durationMultiplier = getDurationMultiplier(durationMinutes);
   const priorityMultiplier = TASK_PRIORITY_MULTIPLIERS[priority];
   const reward = Object.entries(baseStats).reduce((acc, [stat, value]) => {
@@ -175,7 +166,6 @@ export function calculateTaskReward(task) {
     durationMinutes,
     durationMultiplier,
     priorityMultiplier,
-    omittedStats,
   };
 }
 
@@ -206,7 +196,6 @@ export function createTaskPayload({
     baseStats: preview.baseStats,
     durationMultiplier: preview.durationMultiplier,
     priorityMultiplier: preview.priorityMultiplier,
-    omittedStats: preview.omittedStats,
   };
 }
 

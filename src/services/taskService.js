@@ -55,7 +55,6 @@ function normalizeTaskUpdatePayload(updates = {}, currentTask = {}) {
     payload.baseStats = preview.baseStats;
     payload.durationMultiplier = preview.durationMultiplier;
     payload.priorityMultiplier = preview.priorityMultiplier;
-    payload.omittedStats = preview.omittedStats;
     if (nextTask.status === "completed") {
       payload.reward = preview.reward;
     }
@@ -99,7 +98,6 @@ export async function completeTask(taskId, task = null) {
     durationMultiplier: completedTask.durationMultiplier,
     priorityMultiplier: completedTask.priorityMultiplier,
     tags: completedTask.tags,
-    omittedStats: completedTask.omittedStats,
   });
   recordTaskCompletion(completedTask);
 }

@@ -24,7 +24,6 @@ test("stat-based task payload defaults to todo and stores normalized preview dat
     intent: "build",
   });
   assert.deepEqual(payload.baseStats, { atk: 5, foc: 3 });
-  assert.deepEqual(payload.omittedStats, []);
   assert.equal(payload.durationMultiplier, 1.5);
   assert.equal(payload.priorityMultiplier, 1.5);
 });
@@ -39,7 +38,6 @@ test("task rewards follow tag base stats times priority and duration multipliers
 
   assert.deepEqual(reward.baseStats, { atk: 5, foc: 3 });
   assert.deepEqual(reward.reward, { atk: 11.25, foc: 6.75, exp: 18 });
-  assert.deepEqual(reward.omittedStats, []);
 });
 
 test("routine payloads still normalize recurring schedules", () => {
@@ -61,15 +59,15 @@ test("duration multiplier follows the stat-system thresholds", () => {
   assert.equal(getDurationMultiplier(91), 1.5);
 });
 
-test("tasks that would touch more than 3 stats are auto-capped instead of rejected", () => {
-  const reward = calculateTaskReward({
-    title: "Too broad",
-    durationMinutes: 60,
-    priority: "optional",
-    tags: { domain: "social", nature: "creative", intent: "recover" },
-  });
-
-  assert.deepEqual(reward.baseStats, { cre: 3, wis: 3, end: 2 });
-  assert.deepEqual(reward.omittedStats, ["foc"]);
-  assert.deepEqual(reward.reward, { cre: 3, wis: 3, end: 2, exp: 8 });
+test("tasks cannot affect more than 3 unique stats", () => {
+  assert.throws(
+    () =>
+      calculateTaskReward({
+        title: "Too broad",
+        durationMinutes: 60,
+        priority: "optional",
+        tags: { domain: "social", nature: "creative", intent: "recover" },
+      }),
+    /at most 3 unique stats/,
+  );
 });
