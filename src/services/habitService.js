@@ -1,19 +1,7 @@
 import { habitsApi } from "../core/firebaseService.js";
 import { recordHabitCompletion } from "./progressService.js";
 import { createWorkItemPayload } from "../core/workItemModel.js";
-
-function nextHabitState(habit) {
-  const today = new Date().toDateString();
-  const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toDateString();
-  const last = habit.lastCompleted;
-
-  if (last === today) {
-    throw new Error("Habit already completed today");
-  }
-
-  const streak = last === yesterday ? (habit.streak || 0) + 1 : 1;
-  return { lastCompleted: today, streak, status: "done", updatedAt: Date.now() };
-}
+import { getNextHabitState, isWeeklyHabitDueOnDate, toDayString } from "../core/habitLogic.js";
 
 export async function createHabit({ title, dayOfWeek, time, condition = "" }) {
   return habitsApi.add(
@@ -42,18 +30,22 @@ export async function updateHabit(habitId, updates = {}) {
 }
 
 export async function completeHabit(habitId, habit) {
-  const nextState = nextHabitState(habit);
+  const nextState = getNextHabitState(habit, Date.now());
   await habitsApi.patchById(habitId, nextState);
   recordHabitCompletion(habit);
 }
 
-export async function resetHabitsForToday() {
+export async function resetHabitsForToday(now = Date.now()) {
   const habits = (await habitsApi.list()) || {};
-  const today = new Date().toDateString();
+  const today = toDayString(now);
   const work = Object.entries(habits).map(([id, habit]) => {
-    if (!habit || habit.lastCompleted === today) return Promise.resolve();
+    if (!habit || !isWeeklyHabitDueOnDate(habit, now) || habit.lastCompleted === today) {
+      return Promise.resolve();
+    }
+
     return habitsApi.patchById(id, {
       status: "todo",
+      completed: false,
       completedAt: null,
       updatedAt: Date.now(),
     });

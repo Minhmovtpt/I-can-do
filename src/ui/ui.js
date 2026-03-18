@@ -1,4 +1,4 @@
-import { activityApi } from "../core/firebase.js";
+import { activityApi, tasksApi, dailyTasksApi, habitsApi, calendarApi } from "../core/firebase.js";
 import { initRewardEngine } from "../core/rewardEngine.js";
 import { initStats } from "../modules/stats.js";
 import { initTasks } from "../modules/tasks.js";
@@ -11,6 +11,8 @@ import { initSettings } from "../modules/settings.js";
 import { initWebShortcuts } from "../modules/webShortcuts.js";
 import { initFinanceGuard } from "../modules/financeGuard.js";
 import { createNote } from "../services/noteService.js";
+import { buildScheduledItems, toDayKey } from "../core/calendarLogic.js";
+import { isWeeklyHabitDueOnDate } from "../core/habitLogic.js";
 
 const elements = {
   atk: document.getElementById("atk"),
@@ -206,16 +208,19 @@ function initQuickNote() {
   });
 }
 
-function renderTodaySummary() {
-  const taskCards = elements.taskList.querySelectorAll(".work-card");
-  const completedTasks = Array.from(taskCards).filter((card) =>
-    card.textContent.includes("Status: Done"),
+function renderTodaySummary(data) {
+  const tasks = Object.values(data.tasks || {}).filter(
+    (task) => task && task.type !== "daily" && task.type !== "habit",
+  );
+  const completedTasks = tasks.filter((task) => task.completed || task.status === "done").length;
+  const dueTodayHabits = Object.values(data.habits || {}).filter((habit) =>
+    isWeeklyHabitDueOnDate(habit, new Date()),
   ).length;
   const rows = [
-    `Daily tasks: ${elements.dailyTaskList.children.length}`,
-    `Open tasks: ${taskCards.length - completedTasks}`,
+    `Daily tasks: ${Object.keys(data.dailyTasks || {}).length}`,
+    `Open tasks: ${Math.max(0, tasks.length - completedTasks)}`,
     `Completed tasks: ${completedTasks}`,
-    `Habits tracked: ${elements.habitList.children.length}`,
+    `Habits tracked: ${dueTodayHabits}`,
   ];
 
   elements.todaySummaryList.innerHTML = "";
@@ -226,56 +231,68 @@ function renderTodaySummary() {
   });
 }
 
-function renderTodayEvents() {
-  const day = new Date().getDate();
-  const calendarDayLabel = Array.from(
-    elements.calendarGrid.querySelectorAll(".calendar-day-label"),
-  ).find((label) => Number(label.textContent) === day);
+function renderTodayEvents(data) {
+  const today = new Date();
+  const todayEvents =
+    buildScheduledItems([today], data.tasks, data.dailyTasks, data.habits, data.calendarEvents).get(
+      toDayKey(today),
+    ) || [];
 
   elements.todayEventsList.innerHTML = "";
-  const dayCell = calendarDayLabel?.closest(".calendar-day");
-  const eventButtons = dayCell ? dayCell.querySelectorAll(".calendar-event-btn") : [];
 
-  if (!eventButtons.length) {
+  if (!todayEvents.length) {
     const li = document.createElement("li");
     li.textContent = "No events scheduled for today.";
     elements.todayEventsList.appendChild(li);
     return;
   }
 
-  eventButtons.forEach((button) => {
-    const li = document.createElement("li");
-    li.textContent = button.textContent;
-    elements.todayEventsList.appendChild(li);
-  });
+  todayEvents
+    .sort((a, b) => (a.startAt || 0) - (b.startAt || 0))
+    .forEach((event) => {
+      const li = document.createElement("li");
+      li.textContent = `${new Date(event.startAt).toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+      })} ${event.title} [${event.kind}]`;
+      elements.todayEventsList.appendChild(li);
+    });
 }
 
 function observeDashboardData() {
-  const observer = new MutationObserver(() => {
-    renderTodaySummary();
-    renderTodayEvents();
-  });
+  const dashboardData = {
+    tasks: {},
+    dailyTasks: {},
+    habits: {},
+    calendarEvents: {},
+  };
 
-  [
-    elements.dailyTaskList,
-    elements.taskList,
-    elements.habitList,
-    elements.calendarGrid,
-    elements.level,
-    elements.exp,
-    elements.atk,
-    elements.int,
-    elements.disc,
-    elements.cre,
-    elements.end,
-    elements.foc,
-    elements.wis,
-  ].forEach((target) => {
-    observer.observe(target, { childList: true, subtree: true, characterData: true });
-  });
+  const render = () => {
+    renderTodaySummary(dashboardData);
+    renderTodayEvents(dashboardData);
+  };
 
-  renderTodaySummary();
-  renderTodayEvents();
+  const unsubscribers = [
+    tasksApi.subscribe((tasks) => {
+      dashboardData.tasks = tasks || {};
+      render();
+    }),
+    dailyTasksApi.subscribe((dailyTasks) => {
+      dashboardData.dailyTasks = dailyTasks || {};
+      render();
+    }),
+    habitsApi.subscribe((habits) => {
+      dashboardData.habits = habits || {};
+      render();
+    }),
+    calendarApi.subscribeEvents((events) => {
+      dashboardData.calendarEvents = events || {};
+      render();
+    }),
+  ];
+
+  render();
+  return () => unsubscribers.forEach((unsubscribe) => unsubscribe());
 }
 
 function initActivityLog() {

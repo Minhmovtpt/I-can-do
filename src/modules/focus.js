@@ -22,10 +22,10 @@ export function initFocus(elements, notifyError) {
   function updateDashboardStats(sessions) {
     const list = Object.values(sessions || {});
     const today = new Date().toDateString();
-    const todayRows = list.filter(
-      (row) => row.createdAt && new Date(row.createdAt).toDateString() === today,
+    const completedToday = list.filter(
+      (row) =>
+        row.status === "completed" && row.endedAt && new Date(row.endedAt).toDateString() === today,
     );
-    const completedToday = todayRows.filter((row) => row.status === "completed");
     const totalMinutes = completedToday.reduce((sum, row) => sum + Number(row.duration || 0), 0);
     elements.focusSessionToday.textContent = String(completedToday.length);
     elements.focusTotalTimeToday.textContent = `${totalMinutes}m`;

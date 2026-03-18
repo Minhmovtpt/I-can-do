@@ -13,9 +13,7 @@ export async function createTransaction({ amount, type, recurringMonthly = false
 }
 
 export async function updateTransaction(txId, { amount, type, recurringMonthly }) {
-  const payload = {
-    date: Date.now(),
-  };
+  const payload = {};
 
   if (amount !== undefined) {
     payload.amount = requireAmount(amount);

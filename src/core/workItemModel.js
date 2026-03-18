@@ -49,7 +49,7 @@ export function createWorkItemPayload({
     type: resolvedType,
     priority: requireEnum(priority, PRIORITY_VALUES, "Priority"),
     schedule: normalizeSchedule(schedule),
-    status: resolvedType === "task" ? "backlog" : "todo",
+    status: ["daily", "habit"].includes(resolvedType) ? "todo" : "backlog",
     description: String(description || "").trim(),
     condition: String(condition || "").trim(),
     completed: false,

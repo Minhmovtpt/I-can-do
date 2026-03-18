@@ -36,6 +36,7 @@ export async function completeDailyTask(taskId) {
   await dailyTasksApi.patchById(taskId, {
     lastCompleted: today,
     status: "done",
+    completed: true,
     completedAt: Date.now(),
     updatedAt: Date.now(),
   });
@@ -49,6 +50,7 @@ export async function resetDailyTasksForToday() {
     if (!task || task.lastCompleted === today) return Promise.resolve();
     return dailyTasksApi.patchById(id, {
       status: "todo",
+      completed: false,
       completedAt: null,
       updatedAt: Date.now(),
     });

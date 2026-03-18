@@ -1,4 +1,5 @@
 import { completeHabit, subscribeHabits, resetHabitsForToday } from "../services/habitService.js";
+import { isWeeklyHabitDueOnDate, toDayString } from "../core/habitLogic.js";
 
 function makeTrackingCard({ title, time, isDoneToday, onComplete }) {
   const card = document.createElement("article");
@@ -17,6 +18,7 @@ function makeTrackingCard({ title, time, isDoneToday, onComplete }) {
   const completeBtn = document.createElement("button");
   completeBtn.textContent = isDoneToday ? "Completed" : "Complete";
   completeBtn.className = isDoneToday ? "btn-muted" : "";
+  completeBtn.disabled = isDoneToday;
   completeBtn.addEventListener("click", onComplete);
 
   actions.appendChild(completeBtn);
@@ -36,29 +38,32 @@ export function initHabits(elements, notifyError) {
 
   function renderHabits() {
     elements.habitList.innerHTML = "";
-    const today = new Date().toDateString();
+    const today = new Date();
+    const todayKey = toDayString(today);
 
-    Object.entries(habitsById).forEach(([id, habit]) => {
-      const isDoneToday = habit.lastCompleted === today;
-      const hiddenByTab =
-        (activeHabitTab === "active" && isDoneToday) ||
-        (activeHabitTab === "completed" && !isDoneToday);
-      if (hiddenByTab) return;
+    Object.entries(habitsById)
+      .filter(([, habit]) => isWeeklyHabitDueOnDate(habit, today))
+      .forEach(([id, habit]) => {
+        const isDoneToday = habit.lastCompleted === todayKey;
+        const hiddenByTab =
+          (activeHabitTab === "active" && isDoneToday) ||
+          (activeHabitTab === "completed" && !isDoneToday);
+        if (hiddenByTab) return;
 
-      const li = document.createElement("li");
-      li.appendChild(
-        makeTrackingCard({
-          title: habit.title,
-          time: habit.schedule?.time,
-          isDoneToday,
-          onComplete: () =>
-            completeHabit(id, habit).catch((error) =>
-              notifyError(error, "Failed to complete habit"),
-            ),
-        }),
-      );
-      elements.habitList.appendChild(li);
-    });
+        const li = document.createElement("li");
+        li.appendChild(
+          makeTrackingCard({
+            title: habit.title,
+            time: habit.schedule?.time,
+            isDoneToday,
+            onComplete: () =>
+              completeHabit(id, habit).catch((error) =>
+                notifyError(error, "Failed to complete habit"),
+              ),
+          }),
+        );
+        elements.habitList.appendChild(li);
+      });
   }
 
   function scheduleDailyReset() {
