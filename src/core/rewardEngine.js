@@ -22,23 +22,23 @@ function resolveEventReward(event) {
   switch (event.type) {
     case ACTION_TYPES.TASK_COMPLETED:
       return {
-        reward: event.payload?.task?.reward || { exp: 20 },
-        source: event.payload?.task?.title || "Task"
+        reward: event.payload?.task?.reward || {},
+        source: event.payload?.task?.title || "Task",
       };
     case ACTION_TYPES.DAILY_TASK_COMPLETED:
       return {
         reward: event.payload?.task?.reward || {},
-        source: event.payload?.task?.title || "Daily Task"
+        source: event.payload?.task?.title || "Daily Task",
       };
     case ACTION_TYPES.HABIT_COMPLETED:
       return {
         reward: event.payload?.habit?.reward || {},
-        source: event.payload?.habit?.title || "Habit"
+        source: event.payload?.habit?.title || "Habit",
       };
     case ACTION_TYPES.FOCUS_SESSION_COMPLETED:
       return {
         reward: { foc: 5, exp: 10 },
-        source: "Focus Session"
+        source: "Focus Session",
       };
     default:
       return null;

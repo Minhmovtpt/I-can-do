@@ -4,7 +4,7 @@
 
 ### What this application does
 
-I-can-do is a browser-based personal productivity workspace with RPG-style progression. Users can create/manage tasks, daily tasks, habits, calendar events, focus sessions, notes, and finance transactions. Completion events trigger rewards that update RPG-like stats and EXP.
+I-can-do is a browser-based personal productivity workspace with RPG-style progression. Users can create/manage stat-based tasks, daily tasks, habits, calendar events, focus sessions, notes, and finance transactions. Completed tasks convert layered tags, duration, and priority into direct stat rewards plus EXP.
 
 ### Tech stack summary
 
@@ -67,7 +67,7 @@ Not detected in runtime code: Firebase Auth usage, Firestore usage, Cloud Functi
   - `firebaseService.js` (Firebase init, CRUD wrappers, subscription multiplexer)
   - `firebase.js` (re-export facade)
   - `schema.js` (RTDB path constants)
-  - `workItemModel.js` (task/daily/habit payload normalization)
+  - `workItemModel.js` (stat-task calculations + recurring item payload normalization)
   - `domainEvents.js`, `rewardEngine.js`, `rewardLogic.js`, `activityLogger.js`
   - `financeLogic.js`, `validation.js`
 - **Dependencies:** Firebase SDK and browser APIs.
