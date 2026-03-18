@@ -277,6 +277,20 @@
       </aside>
     </div>
 
+    <div id="financeGuardModal" class="modal-backdrop" hidden>
+      <div class="modal-card">
+        <h2>Security Check</h2>
+        <p>Please enter password to access Finance.</p>
+        <div class="sub-form">
+          <input type="password" id="financePasswordInput" placeholder="Enter PIN..." />
+          <div class="item-actions">
+            <button id="financeUnlockBtn">Unlock</button>
+            <button id="financeCancelBtn" class="btn-danger">Cancel</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <script type="module" src="./src/ui/ui.js"></script>
   </body>
 </html>

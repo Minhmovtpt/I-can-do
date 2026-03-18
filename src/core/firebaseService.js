@@ -41,7 +41,13 @@ export function subscribe(path, callback) {
       callbacks: new Set(),
       handler: (snapshot) => {
         const value = snapshot.val();
-        listener.callbacks.forEach((cb) => cb(value));
+        listener.callbacks.forEach((cb) => {
+          try {
+            cb(value);
+          } catch (err) {
+            console.error(`Error in subscription callback for path "${path}":`, err);
+          }
+        });
       },
     };
 
