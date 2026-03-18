@@ -1,11 +1,14 @@
-import { tasksApi, dailyTasksApi, habitsApi } from "../core/firebase.js";
+import { tasksApi, dailyTasksApi, habitsApi, calendarApi } from "../core/firebase.js";
+import {
+  buildScheduledItems,
+  getDaysGrid,
+  resolveCalendarStatus,
+  shiftCalendarViewDate,
+  toDayKey,
+} from "../core/calendarLogic.js";
 
 const WEEK_DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const FOUR_DAYS_MS = 4 * 24 * 60 * 60 * 1000;
-
-function toDayKey(date) {
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
-}
 
 function getMonthLabel(date, viewMode) {
   return `${viewMode.toUpperCase()} • ${date.toLocaleString([], { month: "long", year: "numeric" })}`;
@@ -18,14 +21,7 @@ function formatTimeRange(event) {
   return `${start.toLocaleTimeString([], options)}-${end.toLocaleTimeString([], options)}`;
 }
 
-function resolveStatus(event, now) {
-  if (event.completed) return "completed";
-  if ((event.taskTime || event.startAt) < now) return "fail";
-  return "pending";
-}
-
 function snapshotPrefix(status) {
-  if (status === "fail") return "● FAIL";
   if (status === "completed") return "✔";
   return "●";
 }
@@ -37,105 +33,13 @@ function createStatusDot(status) {
   return dot;
 }
 
-function parseTime(time = "09:00") {
-  const [h, m] = String(time)
-    .split(":")
-    .map((n) => Number(n || 0));
-  return { h, m };
-}
-
-function getDaysGrid(viewDate, viewMode) {
-  if (viewMode === "day") {
-    return [new Date(viewDate.getFullYear(), viewDate.getMonth(), viewDate.getDate())];
-  }
-
-  if (viewMode === "week") {
-    const sunday = new Date(viewDate);
-    sunday.setDate(viewDate.getDate() - viewDate.getDay());
-    return Array.from(
-      { length: 7 },
-      (_, i) => new Date(sunday.getFullYear(), sunday.getMonth(), sunday.getDate() + i),
-    );
-  }
-
-  const year = viewDate.getFullYear();
-  const month = viewDate.getMonth();
-  const firstDay = new Date(year, month, 1);
-  const lastDay = new Date(year, month + 1, 0);
-  const cells = [];
-
-  for (let i = 0; i < firstDay.getDay(); i += 1) cells.push(null);
-  for (let day = 1; day <= lastDay.getDate(); day += 1) cells.push(new Date(year, month, day));
-  while (cells.length % 7 !== 0) cells.push(null);
-
-  return cells;
-}
-
-function scheduledItems(days, tasks, dailyTasks, habits) {
-  const byDay = new Map();
-  const allowed = new Set(days.filter(Boolean).map((d) => toDayKey(d)));
-
-  const add = (date, event) => {
-    const key = toDayKey(date);
-    if (!allowed.has(key)) return;
-    if (!byDay.has(key)) byDay.set(key, []);
-    byDay.get(key).push(event);
-  };
-
-  Object.values(tasks || {}).forEach((task) => {
-    const ts = task.schedule?.specificAt;
-    if (!ts) return;
-    const date = new Date(ts);
-    add(date, {
-      title: task.title,
-      kind: "task",
-      startAt: ts,
-      endAt: ts + 30 * 60 * 1000,
-      taskTime: ts,
-      completed: Boolean(task.completed),
-    });
-  });
-
-  days.filter(Boolean).forEach((date) => {
-    Object.values(dailyTasks || {}).forEach((task) => {
-      const { h, m } = parseTime(task.schedule?.time);
-      const at = new Date(date.getFullYear(), date.getMonth(), date.getDate(), h, m).getTime();
-      const done = task.lastCompleted === date.toDateString();
-      add(date, {
-        title: task.title,
-        kind: "daily",
-        startAt: at,
-        endAt: at + 30 * 60 * 1000,
-        taskTime: at,
-        completed: done,
-      });
-    });
-
-    Object.values(habits || {}).forEach((habit) => {
-      if (Number(habit.schedule?.dayOfWeek) !== date.getDay()) return;
-      const { h, m } = parseTime(habit.schedule?.time);
-      const at = new Date(date.getFullYear(), date.getMonth(), date.getDate(), h, m).getTime();
-      const done = habit.lastCompleted === date.toDateString();
-      add(date, {
-        title: habit.title,
-        kind: "habit",
-        startAt: at,
-        endAt: at + 30 * 60 * 1000,
-        taskTime: at,
-        completed: done,
-      });
-    });
-  });
-
-  return byDay;
-}
-
 export function initCalendar(elements) {
   let viewDate = new Date();
   let viewMode = "month";
   let tasksById = {};
   let dailyTasksById = {};
   let habitsById = {};
+  let calendarEventsById = {};
 
   function render() {
     elements.calendarMonthLabel.textContent = getMonthLabel(viewDate, viewMode);
@@ -151,7 +55,13 @@ export function initCalendar(elements) {
     }
 
     const gridDays = getDaysGrid(viewDate, viewMode);
-    const byDay = scheduledItems(gridDays, tasksById, dailyTasksById, habitsById);
+    const byDay = buildScheduledItems(
+      gridDays,
+      tasksById,
+      dailyTasksById,
+      habitsById,
+      calendarEventsById,
+    );
     const now = Date.now();
     const maxVisible = now + FOUR_DAYS_MS;
 
@@ -182,7 +92,7 @@ export function initCalendar(elements) {
       (byDay.get(key) || [])
         .sort((a, b) => (a.startAt || 0) - (b.startAt || 0))
         .forEach((event) => {
-          const status = resolveStatus(event, now);
+          const status = resolveCalendarStatus(event);
           const row = document.createElement("div");
           row.className = "calendar-event";
 
@@ -204,13 +114,11 @@ export function initCalendar(elements) {
   }
 
   elements.calendarPrevMonthBtn.addEventListener("click", () => {
-    const delta = viewMode === "day" ? -1 : viewMode === "week" ? -7 : -30;
-    viewDate = new Date(viewDate.getFullYear(), viewDate.getMonth(), viewDate.getDate() + delta);
+    viewDate = shiftCalendarViewDate(viewDate, viewMode, -1);
     render();
   });
   elements.calendarNextMonthBtn.addEventListener("click", () => {
-    const delta = viewMode === "day" ? 1 : viewMode === "week" ? 7 : 30;
-    viewDate = new Date(viewDate.getFullYear(), viewDate.getMonth(), viewDate.getDate() + delta);
+    viewDate = shiftCalendarViewDate(viewDate, viewMode, 1);
     render();
   });
   elements.calendarTodayBtn.addEventListener("click", () => {
@@ -241,6 +149,10 @@ export function initCalendar(elements) {
     }),
     habitsApi.subscribe((habits) => {
       habitsById = habits || {};
+      render();
+    }),
+    calendarApi.subscribeEvents((events) => {
+      calendarEventsById = events || {};
       render();
     }),
   ];

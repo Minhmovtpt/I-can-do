@@ -37,6 +37,7 @@ export async function updateTask(taskId, updates = {}) {
   if (updates.status !== undefined) {
     payload.status = resolveWorkItemStatus(updates.status);
     payload.completed = payload.status === "done";
+    payload.completedAt = payload.completed ? Date.now() : null;
   }
 
   return tasksApi.updateById(taskId, payload);

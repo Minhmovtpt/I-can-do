@@ -45,6 +45,10 @@ export async function updateCalendarEvent(eventId, updates = {}) {
     payload.title = requireNonEmptyText(updates.title, "Event title", { maxLength: 120 });
   }
 
+  const current =
+    updates.startAt !== undefined || updates.endAt !== undefined
+      ? await calendarApi.getEventById(eventId)
+      : null;
   const hasStart = updates.startAt !== undefined;
   const hasEnd = updates.endAt !== undefined;
 
@@ -56,10 +60,12 @@ export async function updateCalendarEvent(eventId, updates = {}) {
     payload.endAt = toTimestamp(updates.endAt, "End time");
   }
 
+  const effectiveStartAt = payload.startAt ?? current?.startAt;
+  const effectiveEndAt = payload.endAt ?? current?.endAt;
   if (
-    payload.startAt !== undefined &&
-    payload.endAt !== undefined &&
-    payload.endAt <= payload.startAt
+    effectiveStartAt !== undefined &&
+    effectiveEndAt !== undefined &&
+    effectiveEndAt <= effectiveStartAt
   ) {
     throw new Error("End time must be after start time.");
   }
