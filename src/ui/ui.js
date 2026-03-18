@@ -55,9 +55,10 @@ const elements = {
   resetStatsBtn: document.getElementById("resetStatsBtn"),
   resetDatabaseBtn: document.getElementById("resetDatabaseBtn"),
   taskInput: document.getElementById("taskInput"),
-  taskDescriptionInput: document.getElementById("taskDescriptionInput"),
-  taskConditionInput: document.getElementById("taskConditionInput"),
-  taskTypeInput: document.getElementById("taskTypeInput"),
+  taskDurationInput: document.getElementById("taskDurationInput"),
+  taskDomainInput: document.getElementById("taskDomainInput"),
+  taskNatureInput: document.getElementById("taskNatureInput"),
+  taskIntentInput: document.getElementById("taskIntentInput"),
   taskPriorityInput: document.getElementById("taskPriorityInput"),
   taskScheduleInput: document.getElementById("taskScheduleInput"),
   taskCreationPanel: document.getElementById("taskCreationPanel"),
@@ -203,10 +204,8 @@ function initQuickNote() {
 }
 
 function renderTodaySummary(data) {
-  const tasks = Object.values(data.tasks || {}).filter(
-    (task) => task && task.type !== "daily" && task.type !== "habit",
-  );
-  const completedTasks = tasks.filter((task) => task.completed || task.status === "done").length;
+  const tasks = Object.values(data.tasks || {}).filter((task) => task && !task.type);
+  const completedTasks = tasks.filter((task) => task.status === "completed").length;
   const dueTodayRoutines = [
     ...Object.values(data.dailyTasks || {}),
     ...Object.values(data.habits || {}),

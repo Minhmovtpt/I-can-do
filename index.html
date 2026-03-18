@@ -90,19 +90,19 @@
                 <h3>Task Board</h3>
                 <div class="task-columns">
                   <div class="task-column">
-                    <h4>Backlog</h4>
+                    <h4>Todo</h4>
                     <ul id="kanban-backlog"></ul>
                   </div>
                   <div class="task-column">
-                    <h4>Todo</h4>
+                    <h4>In Progress</h4>
                     <ul id="kanban-todo"></ul>
                   </div>
                   <div class="task-column">
-                    <h4>In Progress</h4>
+                    <h4>Completed</h4>
                     <ul id="kanban-in-progress"></ul>
                   </div>
                   <div class="task-column">
-                    <h4>Done</h4>
+                    <h4>Failed</h4>
                     <ul id="kanban-done"></ul>
                   </div>
                 </div>
@@ -232,18 +232,41 @@
           <button id="toggleTaskCreationBtn">Create Task</button>
           <div id="taskCreationPanel" class="task-creation-panel">
             <input type="text" id="taskInput" placeholder="Task title" />
-            <textarea id="taskDescriptionInput" placeholder="Task description"></textarea>
-            <input type="text" id="taskConditionInput" placeholder="Condition" />
-            <select id="taskTypeInput">
-              <option value="work">work</option>
-              <option value="personal">personal</option>
-              <option value="study">study</option>
-              <option value="task">task</option>
+            <input
+              type="number"
+              id="taskDurationInput"
+              placeholder="Duration (minutes)"
+              min="1"
+              step="1"
+              value="60"
+            />
+            <select id="taskDomainInput">
+              <option value="work">Domain: work</option>
+              <option value="study">Domain: study</option>
+              <option value="drawing">Domain: drawing</option>
+              <option value="health">Domain: health</option>
+              <option value="life">Domain: life</option>
+              <option value="social">Domain: social</option>
+            </select>
+            <select id="taskNatureInput">
+              <option value="deep_work">Nature: deep_work</option>
+              <option value="practice">Nature: practice</option>
+              <option value="learning">Nature: learning</option>
+              <option value="creative">Nature: creative</option>
+              <option value="maintenance">Nature: maintenance</option>
+              <option value="admin">Nature: admin</option>
+            </select>
+            <select id="taskIntentInput">
+              <option value="build">Intent: build</option>
+              <option value="improve">Intent: improve</option>
+              <option value="maintain">Intent: maintain</option>
+              <option value="explore">Intent: explore</option>
+              <option value="recover">Intent: recover</option>
             </select>
             <select id="taskPriorityInput">
-              <option value="low">low</option>
-              <option value="medium">medium</option>
-              <option value="high">high</option>
+              <option value="critical">critical</option>
+              <option value="important" selected>important</option>
+              <option value="optional">optional</option>
             </select>
             <input type="datetime-local" id="taskScheduleInput" />
             <button id="addTaskBtn">Save Task</button>

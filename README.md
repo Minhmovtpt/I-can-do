@@ -17,7 +17,7 @@ The UI is organized into 3 logical layers:
   - Recent Activity (latest 5 logs)
 - **Calendar workspace**
   - Single workspace with tabs: `Task Board` and `Calendar`
-  - Task Board uses Kanban columns (`New`, `In Progress`, `Completed`, `Canceled`)
+  - Task Board uses Kanban columns (`Todo`, `In Progress`, `Completed`, `Failed`)
   - Calendar supports `month / week / day` views
   - Calendar displays scheduled **tasks + habits + daily tasks + calendar events**
 - **Focus sessions**
@@ -37,21 +37,28 @@ The UI is organized into 3 logical layers:
 - **Web Shortcuts**
   - Quick access buttons to frequently used websites
 
-## Unified work-item model
+## Task system revamp
 
-`Task`, `Daily Task`, and `Habit` share a common shape via `src/core/workItemModel.js`:
+Standalone tasks now use a stat-based model in `src/core/workItemModel.js`:
 
 ```json
 {
   "title": "",
-  "type": "task | daily | habit | work | personal | study",
-  "priority": "low | medium | high",
-  "schedule": {},
-  "status": "new | progress | done | canceled",
-  "description": "",
-  "condition": ""
+  "durationMinutes": 60,
+  "priority": "critical | important | optional",
+  "tags": {
+    "domain": "work | study | drawing | health | life | social",
+    "nature": "deep_work | practice | learning | creative | maintenance | admin",
+    "intent": "build | improve | maintain | explore | recover"
+  },
+  "status": "todo | in_progress | completed | skipped | failed",
+  "baseStats": {},
+  "reward": {}
 }
 ```
+
+`Daily Task` and `Habit` items still share a recurring-work model with `type`, `schedule`, and `condition` metadata.
+If a task tag combination would affect more than 3 stats, the system now keeps the strongest 3 stat contributions instead of blocking task creation.
 
 Schedule modes currently used:
 
