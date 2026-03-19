@@ -18,10 +18,18 @@ import {
   getDurationMultiplier,
 } from "../core/workItemModel.js";
 import { getScheduledDays, isScheduledOnDate, toDayString } from "../core/habitLogic.js";
+import {
+  getBaseStatus,
+  getCurrentWorkStatus,
+  getItemCompletionDayKey,
+} from "../core/scheduling.js";
+import { scheduleAtLocalDayBoundary } from "../core/dayBoundaryScheduler.js";
 
 const STATUS_LABELS = {
   todo: "Todo",
   in_progress: "In Progress",
+  upcoming: "Upcoming",
+  overdue: "Overdue",
   completed: "Completed",
   skipped: "Skipped",
   failed: "Failed",
@@ -101,10 +109,11 @@ function makeTrackingCard({ title, time, subtitle, isDoneToday, onComplete }) {
 }
 
 function makeBoardCard({ task, taskId, onMove }) {
-  const status = task.status || "todo";
+  const status = getCurrentWorkStatus(task);
+  const baseStatus = getBaseStatus(task);
   const card = document.createElement("article");
   card.className = "work-card kanban-card";
-  card.draggable = status !== "completed" && status !== "failed";
+  card.draggable = !["completed", "failed", "skipped"].includes(baseStatus);
   card.dataset.taskId = taskId;
 
   const heading = document.createElement("h4");
@@ -134,7 +143,7 @@ function makeBoardCard({ task, taskId, onMove }) {
   next.type = "button";
   next.className = "btn-muted";
 
-  const index = STATUS_SEQUENCE.indexOf(status);
+  const index = STATUS_SEQUENCE.indexOf(baseStatus);
   prev.disabled = index <= 0;
   next.disabled = index === -1 || index >= STATUS_SEQUENCE.length - 1;
 
@@ -186,7 +195,8 @@ export function initTasks(elements, notifyError) {
     let completedCount = 0;
 
     rows.forEach(({ id, task, source }) => {
-      const isDoneToday = task.lastCompleted === todayKey;
+      const isDoneToday =
+        getCurrentWorkStatus(task) === "completed" && getItemCompletionDayKey(task) === todayKey;
       if (isDoneToday) completedCount += 1;
 
       const hiddenByTab =
@@ -243,8 +253,8 @@ export function initTasks(elements, notifyError) {
     );
 
     taskRows.forEach(([id, task]) => {
-      const status = task.status || "todo";
-      const bucket = columns[status] || columns.todo;
+      const baseStatus = getBaseStatus(task);
+      const bucket = columns[baseStatus] || columns.todo;
       if (!bucket) return;
 
       const li = document.createElement("li");
@@ -347,7 +357,7 @@ export function initTasks(elements, notifyError) {
   }
 
   async function completeTask(taskId, task) {
-    if (task.status === "completed") return;
+    if (getCurrentWorkStatus(task) === "completed") return;
     try {
       await markTaskComplete(taskId, task);
     } catch (error) {
@@ -383,7 +393,7 @@ export function initTasks(elements, notifyError) {
       taskRows
         .sort(([, a], [, b]) => (b.createdAt || 0) - (a.createdAt || 0))
         .forEach(([id, task]) => {
-          const status = task.status || "todo";
+          const status = getCurrentWorkStatus(task);
           const li = document.createElement("li");
 
           const card = document.createElement("article");
@@ -414,7 +424,7 @@ export function initTasks(elements, notifyError) {
           [
             {
               label: "Complete",
-              className: task.status === "completed" ? "btn-muted" : "",
+              className: status === "completed" ? "btn-muted" : "",
               onClick: () => completeTask(id, task),
             },
             { label: "Edit", onClick: () => editTask(id, task) },
@@ -465,17 +475,8 @@ export function initTasks(elements, notifyError) {
       }
     }
 
-    const now = new Date();
-    const nextMidnight = new Date(now);
-    nextMidnight.setHours(24, 0, 0, 0);
-    const timeout = nextMidnight.getTime() - now.getTime();
-
-    setTimeout(() => {
-      runReset();
-      setInterval(runReset, 24 * 60 * 60 * 1000);
-    }, timeout);
-
     runReset();
+    return scheduleAtLocalDayBoundary(runReset);
   }
 
   elements.addTaskBtn.addEventListener("click", addTask);
@@ -487,7 +488,7 @@ export function initTasks(elements, notifyError) {
     renderDailyTracking();
   });
 
-  scheduleDailyReset();
+  const stopResetSchedule = scheduleDailyReset();
 
-  return [loadDailyTasks(), loadHabits(), loadTasks()];
+  return [loadDailyTasks(), loadHabits(), loadTasks(), stopResetSchedule];
 }

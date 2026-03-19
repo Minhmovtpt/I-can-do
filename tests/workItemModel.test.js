@@ -40,7 +40,7 @@ test("task rewards follow tag base stats times priority and duration multipliers
   assert.deepEqual(reward.reward, { atk: 11.25, foc: 6.75, exp: 18 });
 });
 
-test("routine payloads still normalize recurring schedules", () => {
+test("routine payloads normalize recurring schedules and tracking fields", () => {
   const payload = createWorkItemPayload({
     title: "Routine",
     type: "daily",
@@ -49,7 +49,10 @@ test("routine payloads still normalize recurring schedules", () => {
 
   assert.deepEqual(payload.schedule.daysOfWeek, [1, 5]);
   assert.equal(payload.schedule.dayOfWeek, 1);
+  assert.equal(payload.schedule.time, "08:00");
+  assert.equal(payload.schedule.timezone, "local");
   assert.equal(payload.status, "todo");
+  assert.equal(payload.lastCompletedOn, null);
 });
 
 test("duration multiplier follows the stat-system thresholds", () => {

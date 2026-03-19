@@ -1,14 +1,16 @@
-import { isScheduledOnDate, toDayString } from "./habitLogic.js";
+import {
+  getCurrentWorkStatus,
+  getOccurrenceStateForDate,
+  isScheduledOnDate,
+  parseTimeString,
+  toDayKey,
+} from "./scheduling.js";
 
-export function toDayKey(date) {
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
-}
+export { toDayKey };
 
 export function parseTime(time = "09:00") {
-  const [h, m] = String(time)
-    .split(":")
-    .map((n) => Number(n || 0));
-  return { h, m };
+  const { hours, minutes } = parseTimeString(time);
+  return { h: hours, m: minutes };
 }
 
 export function shiftCalendarViewDate(viewDate, viewMode, direction) {
@@ -55,10 +57,17 @@ export function getDaysGrid(viewDate, viewMode) {
 }
 
 export function resolveCalendarStatus(event) {
-  return event.completed ? "completed" : "pending";
+  return event.status ?? (event.completed ? "completed" : "scheduled");
 }
 
-export function buildScheduledItems(days, tasks, dailyTasks, habits, calendarEvents) {
+export function buildScheduledItems(
+  days,
+  tasks,
+  dailyTasks,
+  habits,
+  calendarEvents,
+  now = Date.now(),
+) {
   const byDay = new Map();
   const allowed = new Set(days.filter(Boolean).map((d) => toDayKey(d)));
 
@@ -73,13 +82,14 @@ export function buildScheduledItems(days, tasks, dailyTasks, habits, calendarEve
     const ts = task?.schedule?.specificAt;
     if (!ts) return;
     const date = new Date(ts);
+    const state = getOccurrenceStateForDate(task, ts, now);
     add(date, {
       title: task.title,
       kind: "task",
       startAt: ts,
       endAt: ts + 30 * 60 * 1000,
       taskTime: ts,
-      completed: Boolean(task.completed),
+      status: state.status,
     });
   });
 
@@ -94,7 +104,7 @@ export function buildScheduledItems(days, tasks, dailyTasks, habits, calendarEve
         startAt: at,
         endAt: at + 30 * 60 * 1000,
         taskTime: at,
-        completed: task?.lastCompleted === toDayString(date),
+        status: getOccurrenceStateForDate(task, date, now).status,
       });
     });
 
@@ -108,7 +118,7 @@ export function buildScheduledItems(days, tasks, dailyTasks, habits, calendarEve
         startAt: at,
         endAt: at + 30 * 60 * 1000,
         taskTime: at,
-        completed: habit?.lastCompleted === toDayString(date),
+        status: getOccurrenceStateForDate(habit, date, now).status,
       });
     });
   });
@@ -122,7 +132,7 @@ export function buildScheduledItems(days, tasks, dailyTasks, habits, calendarEve
       kind: "event",
       startAt: ts,
       endAt: Number(event?.endAt || ts),
-      completed: false,
+      status: getCurrentWorkStatus(event, now) === "completed" ? "completed" : "scheduled",
     });
   });
 
