@@ -23,6 +23,10 @@ function formatTimeRange(event) {
 
 function snapshotPrefix(status) {
   if (status === "completed") return "✔";
+  if (status === "overdue") return "!";
+  if (status === "upcoming" || status === "scheduled") return "○";
+  if (status === "failed") return "✖";
+  if (status === "skipped") return "↷";
   return "●";
 }
 

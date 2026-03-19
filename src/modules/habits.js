@@ -1,5 +1,7 @@
 import { completeHabit, subscribeHabits, resetHabitsForToday } from "../services/habitService.js";
 import { isWeeklyHabitDueOnDate, toDayString } from "../core/habitLogic.js";
+import { getCurrentWorkStatus, getItemCompletionDayKey } from "../core/scheduling.js";
+import { scheduleAtLocalDayBoundary } from "../core/dayBoundaryScheduler.js";
 
 function makeTrackingCard({ title, time, isDoneToday, onComplete }) {
   const card = document.createElement("article");
@@ -44,7 +46,9 @@ export function initHabits(elements, notifyError) {
     Object.entries(habitsById)
       .filter(([, habit]) => isWeeklyHabitDueOnDate(habit, today))
       .forEach(([id, habit]) => {
-        const isDoneToday = habit.lastCompleted === todayKey;
+        const isDoneToday =
+          getCurrentWorkStatus(habit) === "completed" &&
+          getItemCompletionDayKey(habit) === todayKey;
         const hiddenByTab =
           (activeHabitTab === "active" && isDoneToday) ||
           (activeHabitTab === "completed" && !isDoneToday);
@@ -75,17 +79,8 @@ export function initHabits(elements, notifyError) {
       }
     }
 
-    const now = new Date();
-    const nextMidnight = new Date(now);
-    nextMidnight.setHours(24, 0, 0, 0);
-    const timeout = nextMidnight.getTime() - now.getTime();
-
-    setTimeout(() => {
-      runReset();
-      setInterval(runReset, 24 * 60 * 60 * 1000);
-    }, timeout);
-
     runReset();
+    return scheduleAtLocalDayBoundary(runReset);
   }
 
   elements.habitTrackingTabs.addEventListener("click", (event) => {
@@ -97,10 +92,15 @@ export function initHabits(elements, notifyError) {
   });
 
   updateTabState();
-  scheduleDailyReset();
+  const stopResetSchedule = scheduleDailyReset();
 
-  return subscribeHabits((habits) => {
+  const unsubscribe = subscribeHabits((habits) => {
     habitsById = habits || {};
     renderHabits();
   });
+
+  return () => {
+    stopResetSchedule();
+    unsubscribe();
+  };
 }
