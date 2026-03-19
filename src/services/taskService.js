@@ -14,6 +14,22 @@ import {
   TASK_TAG_LAYERS,
 } from "../core/workItemModel.js";
 
+function buildOccurrenceTrackingUpdate(completionPatch = {}) {
+  if (completionPatch.lastCompletedOn !== undefined) {
+    return {
+      lastCompletedOn: completionPatch.lastCompletedOn,
+      lastCompletedAt: completionPatch.lastCompletedAt,
+      lastCompleted: completionPatch.lastCompleted,
+    };
+  }
+
+  return {
+    lastCompletedOn: null,
+    lastCompletedAt: null,
+    lastCompleted: null,
+  };
+}
+
 function normalizeTaskUpdatePayload(updates = {}, currentTask = {}) {
   const payload = {
     updatedAt: Date.now(),
@@ -90,6 +106,8 @@ export async function completeTask(taskId, task = null) {
   if (!currentTask) return;
 
   const completion = calculateTaskReward(currentTask);
+  const completionPatch = buildCompletionPatch(currentTask, Date.now());
+  const occurrenceTrackingUpdate = buildOccurrenceTrackingUpdate(completionPatch);
   const completedTask = {
     ...currentTask,
     ...completion,
