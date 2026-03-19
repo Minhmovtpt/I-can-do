@@ -11,6 +11,11 @@ import { getNextHabitState } from "../core/habitLogic.js";
 function buildHabitSchedule({ dayOfWeek, time }, currentSchedule = null) {
   const resolvedTime = requireTimeString(time ?? currentSchedule?.time ?? "09:00", "Schedule time");
   const resolvedDay = dayOfWeek ?? currentSchedule?.dayOfWeek ?? currentSchedule?.daysOfWeek?.[0];
+
+  if (resolvedDay === undefined || resolvedDay === null || resolvedDay === "") {
+    throw new Error("Weekly schedule must include at least one day.");
+  }
+
   return normalizeSchedule({ mode: "weekly", dayOfWeek: Number(resolvedDay), time: resolvedTime });
 }
 

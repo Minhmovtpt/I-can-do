@@ -61,6 +61,24 @@ test("routine completion is keyed to the current local day instead of stale comp
   assert.equal(patch.lastCompletedOn, "2026-03-18");
 });
 
+test("routine reset preserves same-day completion state", () => {
+  const nowDate = new Date(2026, 2, 19, 12, 0, 0);
+  const now = nowDate.getTime();
+  const todayKey = getItemCompletionDayKey({ lastCompleted: nowDate });
+  const routine = {
+    schedule: { mode: "daily", time: "08:00" },
+    status: "completed",
+    completed: true,
+    lastCompleted: todayKey,
+  };
+
+  const patch = buildRoutineResetPatch(routine, now);
+  assert.equal(getItemCompletionDayKey(routine), todayKey);
+  assert.equal(patch.status, "completed");
+  assert.equal(patch.completed, true);
+  assert.equal(patch.lastCompletedOn, todayKey);
+});
+
 test("milliseconds until next local day follow calendar midnight rather than fixed 24h intervals", () => {
   const now = new Date(2026, 2, 19, 23, 59, 30, 0).getTime();
   assert.equal(getMillisecondsUntilNextLocalDay(now), 30 * 1000);

@@ -221,7 +221,7 @@ export function getOccurrenceStateForDate(item, dateLike, now = Date.now()) {
 
   if (!schedule) {
     return {
-      status: isTerminalStatus(baseStatus) ? baseStatus : baseStatus,
+      status: baseStatus,
       baseStatus,
       availableAt: null,
       overdueAt: null,

@@ -206,8 +206,9 @@ function initQuickNote() {
 
 function renderTodaySummary(data) {
   const tasks = Object.values(data.tasks || {}).filter((task) => task && !task.type);
-  const completedTasks = tasks.filter((task) => getCurrentWorkStatus(task) === "completed").length;
-  const openTasks = tasks.filter((task) => isOpenStatus(getCurrentWorkStatus(task))).length;
+  const taskStatuses = tasks.map((task) => getCurrentWorkStatus(task));
+  const completedTasks = taskStatuses.filter((status) => status === "completed").length;
+  const openTasks = taskStatuses.filter((status) => isOpenStatus(status)).length;
   const dueTodayRoutines = [
     ...Object.values(data.dailyTasks || {}),
     ...Object.values(data.habits || {}),
