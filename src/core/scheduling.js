@@ -74,6 +74,33 @@ export function getScheduledDays(schedule = {}) {
   return [];
 }
 
+export function getScheduleMode(schedule = {}) {
+  if (schedule.mode === "daily" || schedule.mode === "weekly" || schedule.mode === "once") {
+    return schedule.mode;
+  }
+
+  if (schedule.specificAt !== undefined && schedule.specificAt !== null) {
+    const specificAt = Number(schedule.specificAt);
+    if (Number.isFinite(specificAt) && specificAt > 0) {
+      return "once";
+    }
+  }
+
+  if (getScheduledDays(schedule).length) {
+    return "weekly";
+  }
+
+  if (
+    schedule.time !== undefined &&
+    schedule.time !== null &&
+    String(schedule.time).trim() !== ""
+  ) {
+    return "daily";
+  }
+
+  return null;
+}
+
 export function normalizeSchedule(scheduleInput, { defaultTime = DEFAULT_SCHEDULE_TIME } = {}) {
   if (scheduleInput === undefined) return undefined;
   if (scheduleInput === null || scheduleInput === "") return null;
@@ -139,19 +166,21 @@ export function isOpenStatus(status) {
 
 export function isScheduledOnDate(item, dateLike = Date.now()) {
   const schedule = item?.schedule || {};
-  if (!schedule.mode) {
-    return !getScheduledDays(schedule).length;
+  const scheduleMode = getScheduleMode(schedule);
+
+  if (scheduleMode === null) {
+    return false;
   }
 
-  if (schedule.mode === "daily") {
+  if (scheduleMode === "daily") {
     return true;
   }
 
-  if (schedule.mode === "weekly") {
+  if (scheduleMode === "weekly") {
     return getScheduledDays(schedule).includes(toDateOnly(dateLike).getDay());
   }
 
-  if (schedule.mode === "once") {
+  if (scheduleMode === "once") {
     return toDayKey(schedule.specificAt) === toDayKey(dateLike);
   }
 
@@ -163,7 +192,9 @@ export function getItemCompletionDayKey(item = {}) {
 }
 
 export function getScheduledStartForDate(schedule = {}, dateLike = Date.now()) {
-  if (schedule.mode === "once") {
+  const scheduleMode = getScheduleMode(schedule);
+
+  if (scheduleMode === "once") {
     return Number(schedule.specificAt || 0) || null;
   }
 
@@ -173,7 +204,9 @@ export function getScheduledStartForDate(schedule = {}, dateLike = Date.now()) {
 }
 
 export function getOccurrenceCloseAt(schedule = {}, dateLike = Date.now()) {
-  if (schedule.mode === "once") {
+  const scheduleMode = getScheduleMode(schedule);
+
+  if (scheduleMode === "once") {
     return null;
   }
 
@@ -199,8 +232,9 @@ export function getOccurrenceStateForDate(item, dateLike, now = Date.now()) {
     };
   }
 
+  const scheduleMode = getScheduleMode(schedule);
   const isScheduled = isScheduledOnDate({ schedule }, dateLike);
-  const dayKey = schedule.mode === "once" ? toDayKey(schedule.specificAt) : toDayKey(dateLike);
+  const dayKey = scheduleMode === "once" ? toDayKey(schedule.specificAt) : toDayKey(dateLike);
   const availableAt = getScheduledStartForDate(schedule, dateLike);
   const overdueAt = availableAt;
   const closesAt = getOccurrenceCloseAt(schedule, dateLike);
@@ -234,7 +268,7 @@ export function getOccurrenceStateForDate(item, dateLike, now = Date.now()) {
     };
   }
 
-  if (isCompletedForOccurrence || (schedule.mode === "once" && baseStatus === "completed")) {
+  if (isCompletedForOccurrence || (scheduleMode === "once" && baseStatus === "completed")) {
     return {
       status: "completed",
       baseStatus,
@@ -278,7 +312,9 @@ export function getCurrentWorkStatus(item, now = Date.now()) {
     return getBaseStatus(item);
   }
 
-  if (schedule.mode === "once") {
+  const scheduleMode = getScheduleMode(schedule);
+
+  if (scheduleMode === "once") {
     return getOccurrenceStateForDate(item, schedule.specificAt, now).status;
   }
 
@@ -301,7 +337,7 @@ export function assertCanCompleteOccurrence(item, now = Date.now()) {
     return;
   }
 
-  if (schedule.mode !== "once" && !isScheduledOnDate(item, currentTime)) {
+  if (getScheduleMode(schedule) !== "once" && !isScheduledOnDate(item, currentTime)) {
     throw new Error("Item is not scheduled for today.");
   }
 
@@ -320,7 +356,7 @@ export function buildCompletionPatch(item, now = Date.now()) {
   assertCanCompleteOccurrence(item, now);
   const timestamp = Number(now);
   const schedule = item?.schedule || null;
-  const dayKey = schedule && schedule.mode !== "once" ? toDayKey(timestamp) : null;
+  const dayKey = schedule && getScheduleMode(schedule) !== "once" ? toDayKey(timestamp) : null;
 
   return {
     status: "completed",

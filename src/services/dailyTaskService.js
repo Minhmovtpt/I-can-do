@@ -3,6 +3,7 @@ import { recordDailyTaskCompletion } from "./progressService.js";
 import {
   buildCompletionPatch,
   buildRoutineResetPatch,
+  getScheduledDays,
   normalizeSchedule,
   requireTimeString,
 } from "../core/scheduling.js";
@@ -10,14 +11,14 @@ import { createWorkItemPayload } from "../core/workItemModel.js";
 
 function buildRoutineSchedule({ daysOfWeek, time }, currentSchedule = null) {
   const resolvedTime = requireTimeString(time ?? currentSchedule?.time ?? "09:00", "Schedule time");
-  const rawDays = daysOfWeek ?? currentSchedule?.daysOfWeek ?? currentSchedule?.dayOfWeek ?? [];
-  const normalized = normalizeSchedule(
-    Array.isArray(rawDays) && rawDays.length
-      ? { mode: "weekly", daysOfWeek: rawDays, time: resolvedTime }
+  const resolvedDays =
+    daysOfWeek !== undefined ? [...daysOfWeek] : getScheduledDays(currentSchedule ?? {});
+
+  return normalizeSchedule(
+    resolvedDays.length
+      ? { mode: "weekly", daysOfWeek: resolvedDays, time: resolvedTime }
       : { mode: "daily", time: resolvedTime },
   );
-
-  return normalized;
 }
 
 export async function createDailyTask({ title, time, condition = "", daysOfWeek = [] }) {

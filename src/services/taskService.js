@@ -59,7 +59,8 @@ function normalizeTaskUpdatePayload(updates = {}, currentTask = {}) {
   const shouldRecalculate =
     payload.durationMinutes !== undefined ||
     payload.priority !== undefined ||
-    payload.tags !== undefined;
+    payload.tags !== undefined ||
+    getBaseStatus(nextTask) === "completed";
 
   if (shouldRecalculate) {
     const preview = calculateTaskReward(nextTask);
@@ -68,9 +69,7 @@ function normalizeTaskUpdatePayload(updates = {}, currentTask = {}) {
     payload.baseStats = preview.baseStats;
     payload.durationMultiplier = preview.durationMultiplier;
     payload.priorityMultiplier = preview.priorityMultiplier;
-    if (getBaseStatus(nextTask) === "completed") {
-      payload.reward = preview.reward;
-    }
+    payload.reward = getBaseStatus(nextTask) === "completed" ? preview.reward : null;
   }
 
   return payload;
@@ -102,6 +101,13 @@ export async function completeTask(taskId, task = null) {
     completed: completedTask.completed,
     completedAt: completedTask.completedAt,
     updatedAt: completedTask.updatedAt,
+    ...(completedTask.lastCompletedOn !== undefined
+      ? {
+          lastCompletedOn: completedTask.lastCompletedOn,
+          lastCompletedAt: completedTask.lastCompletedAt,
+          lastCompleted: completedTask.lastCompleted,
+        }
+      : {}),
     reward: completedTask.reward,
     baseStats: completedTask.baseStats,
     durationMinutes: completedTask.durationMinutes,

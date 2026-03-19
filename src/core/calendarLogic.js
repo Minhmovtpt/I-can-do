@@ -57,7 +57,7 @@ export function getDaysGrid(viewDate, viewMode) {
 }
 
 export function resolveCalendarStatus(event) {
-  return event.status || "scheduled";
+  return event.status ?? (event.completed ? "completed" : "scheduled");
 }
 
 export function buildScheduledItems(
