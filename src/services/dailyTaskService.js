@@ -12,7 +12,7 @@ import { createWorkItemPayload } from "../core/workItemModel.js";
 function buildRoutineSchedule({ daysOfWeek, time }, currentSchedule = null) {
   const resolvedTime = requireTimeString(time ?? currentSchedule?.time ?? "09:00", "Schedule time");
   const resolvedDays =
-    daysOfWeek == null ? getScheduledDays(currentSchedule ?? {}) : [...daysOfWeek];
+    daysOfWeek !== undefined ? [...daysOfWeek] : getScheduledDays(currentSchedule ?? {});
 
   return normalizeSchedule(
     resolvedDays.length

@@ -48,9 +48,7 @@ function normalizeTaskUpdatePayload(updates = {}, currentTask = {}) {
     payload.priority = updates.priority;
   }
   if (updates.schedule !== undefined) {
-    payload.schedule =
-      normalizeSchedule(updates.schedule, { defaultTime: currentTask.schedule?.time ?? "09:00" }) ??
-      null;
+    payload.schedule = normalizeSchedule(updates.schedule, { defaultTime: "09:00" }) ?? null;
   }
   if (updates.tags !== undefined) {
     payload.tags = { ...(currentTask.tags || {}), ...updates.tags };
@@ -64,8 +62,7 @@ function normalizeTaskUpdatePayload(updates = {}, currentTask = {}) {
     };
 
     if (nextStatus === "completed") {
-      const completionPatch = buildCompletionPatch(effectiveTask, Date.now());
-      Object.assign(payload, completionPatch, buildOccurrenceTrackingUpdate(completionPatch));
+      Object.assign(payload, buildCompletionPatch(effectiveTask, Date.now()));
     } else {
       payload.status = nextStatus;
       payload.completed = false;
@@ -114,8 +111,7 @@ export async function completeTask(taskId, task = null) {
   const completedTask = {
     ...currentTask,
     ...completion,
-    ...completionPatch,
-    ...occurrenceTrackingUpdate,
+    ...buildCompletionPatch(currentTask, Date.now()),
   };
 
   await tasksApi.updateById(taskId, {
@@ -123,7 +119,13 @@ export async function completeTask(taskId, task = null) {
     completed: completedTask.completed,
     completedAt: completedTask.completedAt,
     updatedAt: completedTask.updatedAt,
-    ...occurrenceTrackingUpdate,
+    ...(completedTask.lastCompletedOn !== undefined
+      ? {
+          lastCompletedOn: completedTask.lastCompletedOn,
+          lastCompletedAt: completedTask.lastCompletedAt,
+          lastCompleted: completedTask.lastCompleted,
+        }
+      : {}),
     reward: completedTask.reward,
     baseStats: completedTask.baseStats,
     durationMinutes: completedTask.durationMinutes,
