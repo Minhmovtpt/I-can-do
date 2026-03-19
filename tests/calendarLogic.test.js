@@ -8,20 +8,20 @@ import {
 } from "../src/core/calendarLogic.js";
 
 test("month navigation advances by calendar month", () => {
-  const shifted = shiftCalendarViewDate(new Date("2026-01-31T12:00:00Z"), "month", 1);
-  assert.equal(shifted.getUTCFullYear(), 2026);
-  assert.equal(shifted.getUTCMonth(), 1);
-  assert.equal(shifted.getUTCDate(), 1);
+  const shifted = shiftCalendarViewDate(new Date(2026, 0, 31, 12, 0, 0), "month", 1);
+  assert.equal(shifted.getFullYear(), 2026);
+  assert.equal(shifted.getMonth(), 1);
+  assert.equal(shifted.getDate(), 1);
 });
 
 test("scheduled items include recurring routines on matching days only", () => {
-  const day = new Date("2026-03-16T00:00:00Z");
+  const day = new Date(2026, 2, 16, 0, 0, 0);
   const events = buildScheduledItems(
     [day],
     {
       task1: {
         title: "Task",
-        schedule: { specificAt: new Date("2026-03-16T10:00:00Z").getTime() },
+        schedule: { mode: "once", specificAt: new Date(2026, 2, 16, 10, 0, 0).getTime() },
       },
     },
     {
@@ -33,15 +33,16 @@ test("scheduled items include recurring routines on matching days only", () => {
       weekly2: { title: "Wrong day", schedule: { mode: "weekly", daysOfWeek: [2], time: "12:00" } },
     },
     {
-      habit1: { title: "Legacy habit", schedule: { dayOfWeek: 1, time: "09:00" } },
+      habit1: { title: "Legacy habit", schedule: { mode: "weekly", dayOfWeek: 1, time: "09:00" } },
     },
     {
       event1: {
         title: "Meeting",
-        startAt: new Date("2026-03-16T11:00:00Z").getTime(),
-        endAt: new Date("2026-03-16T12:00:00Z").getTime(),
+        startAt: new Date(2026, 2, 16, 11, 0, 0).getTime(),
+        endAt: new Date(2026, 2, 16, 12, 0, 0).getTime(),
       },
     },
+    new Date(2026, 2, 16, 12, 0, 0).getTime(),
   );
 
   const rows = events.get(toDayKey(day)) || [];
@@ -52,9 +53,12 @@ test("scheduled items include recurring routines on matching days only", () => {
     "Mon routine",
     "Task",
   ]);
+  assert.equal(rows.find((row) => row.title === "Task")?.status, "overdue");
 });
 
-test("calendar status only exposes pending or completed", () => {
-  assert.equal(resolveCalendarStatus({ completed: false }), "pending");
+test("calendar status exposes scheduled, upcoming, overdue, and terminal states", () => {
+  assert.equal(resolveCalendarStatus({ status: "overdue" }), "overdue");
+  assert.equal(resolveCalendarStatus({ status: "completed" }), "completed");
   assert.equal(resolveCalendarStatus({ completed: true }), "completed");
+  assert.equal(resolveCalendarStatus({}), "scheduled");
 });

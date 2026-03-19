@@ -2,10 +2,14 @@ import { tasksApi } from "../core/firebaseService.js";
 import { requireNonEmptyText } from "../core/validation.js";
 import { recordTaskCompletion } from "./progressService.js";
 import {
+  buildCompletionPatch,
+  getBaseStatus,
+  normalizeSchedule,
+  resolveStoredStatus,
+} from "../core/scheduling.js";
+import {
   calculateTaskReward,
   createTaskPayload,
-  normalizeSchedule,
-  resolveTaskStatus,
   TASK_PRIORITY_VALUES,
   TASK_TAG_LAYERS,
 } from "../core/workItemModel.js";
@@ -28,16 +32,25 @@ function normalizeTaskUpdatePayload(updates = {}, currentTask = {}) {
     payload.priority = updates.priority;
   }
   if (updates.schedule !== undefined) {
-    payload.schedule = normalizeSchedule(updates.schedule);
+    payload.schedule = normalizeSchedule(updates.schedule, { defaultTime: "09:00" }) ?? null;
   }
   if (updates.tags !== undefined) {
     payload.tags = { ...(currentTask.tags || {}), ...updates.tags };
   }
   if (updates.status !== undefined) {
-    payload.status = resolveTaskStatus(updates.status);
-    payload.completed = payload.status === "completed";
-    payload.completedAt = payload.completed ? Date.now() : null;
-    if (!payload.completed) {
+    const nextStatus = resolveStoredStatus(updates.status);
+    const effectiveTask = {
+      ...currentTask,
+      ...payload,
+      status: nextStatus,
+    };
+
+    if (nextStatus === "completed") {
+      Object.assign(payload, buildCompletionPatch(effectiveTask, Date.now()));
+    } else {
+      payload.status = nextStatus;
+      payload.completed = false;
+      payload.completedAt = null;
       payload.reward = null;
     }
   }
@@ -46,7 +59,8 @@ function normalizeTaskUpdatePayload(updates = {}, currentTask = {}) {
   const shouldRecalculate =
     payload.durationMinutes !== undefined ||
     payload.priority !== undefined ||
-    payload.tags !== undefined;
+    payload.tags !== undefined ||
+    getBaseStatus(nextTask) === "completed";
 
   if (shouldRecalculate) {
     const preview = calculateTaskReward(nextTask);
@@ -55,9 +69,7 @@ function normalizeTaskUpdatePayload(updates = {}, currentTask = {}) {
     payload.baseStats = preview.baseStats;
     payload.durationMultiplier = preview.durationMultiplier;
     payload.priorityMultiplier = preview.priorityMultiplier;
-    if (nextTask.status === "completed") {
-      payload.reward = preview.reward;
-    }
+    payload.reward = getBaseStatus(nextTask) === "completed" ? preview.reward : null;
   }
 
   return payload;
@@ -81,10 +93,7 @@ export async function completeTask(taskId, task = null) {
   const completedTask = {
     ...currentTask,
     ...completion,
-    status: "completed",
-    completed: true,
-    completedAt: Date.now(),
-    updatedAt: Date.now(),
+    ...buildCompletionPatch(currentTask, Date.now()),
   };
 
   await tasksApi.updateById(taskId, {
@@ -92,6 +101,13 @@ export async function completeTask(taskId, task = null) {
     completed: completedTask.completed,
     completedAt: completedTask.completedAt,
     updatedAt: completedTask.updatedAt,
+    ...(completedTask.lastCompletedOn !== undefined
+      ? {
+          lastCompletedOn: completedTask.lastCompletedOn,
+          lastCompletedAt: completedTask.lastCompletedAt,
+          lastCompleted: completedTask.lastCompleted,
+        }
+      : {}),
     reward: completedTask.reward,
     baseStats: completedTask.baseStats,
     durationMinutes: completedTask.durationMinutes,
