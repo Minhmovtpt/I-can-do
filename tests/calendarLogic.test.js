@@ -21,7 +21,7 @@ test("scheduled items include recurring routines on matching days only", () => {
     {
       task1: {
         title: "Task",
-        schedule: { specificAt: new Date("2026-03-16T10:00:00Z").getTime() },
+        schedule: { mode: "once", specificAt: new Date("2026-03-16T10:00:00Z").getTime() },
       },
     },
     {
@@ -33,7 +33,7 @@ test("scheduled items include recurring routines on matching days only", () => {
       weekly2: { title: "Wrong day", schedule: { mode: "weekly", daysOfWeek: [2], time: "12:00" } },
     },
     {
-      habit1: { title: "Legacy habit", schedule: { dayOfWeek: 1, time: "09:00" } },
+      habit1: { title: "Legacy habit", schedule: { mode: "weekly", dayOfWeek: 1, time: "09:00" } },
     },
     {
       event1: {
@@ -42,6 +42,7 @@ test("scheduled items include recurring routines on matching days only", () => {
         endAt: new Date("2026-03-16T12:00:00Z").getTime(),
       },
     },
+    new Date("2026-03-16T12:00:00Z").getTime(),
   );
 
   const rows = events.get(toDayKey(day)) || [];
@@ -52,9 +53,11 @@ test("scheduled items include recurring routines on matching days only", () => {
     "Mon routine",
     "Task",
   ]);
+  assert.equal(rows.find((row) => row.title === "Task")?.status, "overdue");
 });
 
-test("calendar status only exposes pending or completed", () => {
-  assert.equal(resolveCalendarStatus({ completed: false }), "pending");
-  assert.equal(resolveCalendarStatus({ completed: true }), "completed");
+test("calendar status exposes scheduled, upcoming, overdue, and terminal states", () => {
+  assert.equal(resolveCalendarStatus({ status: "overdue" }), "overdue");
+  assert.equal(resolveCalendarStatus({ status: "completed" }), "completed");
+  assert.equal(resolveCalendarStatus({}), "scheduled");
 });

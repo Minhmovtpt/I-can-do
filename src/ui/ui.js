@@ -12,6 +12,7 @@ import { initFinanceGuard } from "../modules/financeGuard.js";
 import { createNote } from "../services/noteService.js";
 import { buildScheduledItems, toDayKey } from "../core/calendarLogic.js";
 import { isWeeklyHabitDueOnDate } from "../core/habitLogic.js";
+import { getCurrentWorkStatus, isOpenStatus } from "../core/scheduling.js";
 
 const elements = {
   atk: document.getElementById("atk"),
@@ -205,14 +206,15 @@ function initQuickNote() {
 
 function renderTodaySummary(data) {
   const tasks = Object.values(data.tasks || {}).filter((task) => task && !task.type);
-  const completedTasks = tasks.filter((task) => task.status === "completed").length;
+  const completedTasks = tasks.filter((task) => getCurrentWorkStatus(task) === "completed").length;
+  const openTasks = tasks.filter((task) => isOpenStatus(getCurrentWorkStatus(task))).length;
   const dueTodayRoutines = [
     ...Object.values(data.dailyTasks || {}),
     ...Object.values(data.habits || {}),
   ].filter((item) => isWeeklyHabitDueOnDate(item, new Date())).length;
   const rows = [
     `Routines today: ${dueTodayRoutines}`,
-    `Open tasks: ${Math.max(0, tasks.length - completedTasks)}`,
+    `Open tasks: ${openTasks}`,
     `Completed tasks: ${completedTasks}`,
   ];
 

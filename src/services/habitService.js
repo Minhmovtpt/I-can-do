@@ -1,7 +1,18 @@
 import { habitsApi } from "../core/firebaseService.js";
 import { recordHabitCompletion } from "./progressService.js";
+import {
+  buildRoutineResetPatch,
+  normalizeSchedule,
+  requireTimeString,
+} from "../core/scheduling.js";
 import { createWorkItemPayload } from "../core/workItemModel.js";
-import { getNextHabitState, isWeeklyHabitDueOnDate, toDayString } from "../core/habitLogic.js";
+import { getNextHabitState } from "../core/habitLogic.js";
+
+function buildHabitSchedule({ dayOfWeek, time }, currentSchedule = null) {
+  const resolvedTime = requireTimeString(time ?? currentSchedule?.time ?? "09:00", "Schedule time");
+  const resolvedDay = dayOfWeek ?? currentSchedule?.dayOfWeek ?? currentSchedule?.daysOfWeek?.[0];
+  return normalizeSchedule({ mode: "weekly", dayOfWeek: Number(resolvedDay), time: resolvedTime });
+}
 
 export async function createHabit({ title, dayOfWeek, time, condition = "" }) {
   return habitsApi.add(
@@ -9,46 +20,46 @@ export async function createHabit({ title, dayOfWeek, time, condition = "" }) {
       title,
       type: "habit",
       priority: "medium",
-      schedule: { mode: "weekly", dayOfWeek, time },
+      schedule: buildHabitSchedule({ dayOfWeek, time }),
       condition,
     }),
   );
 }
 
 export async function updateHabit(habitId, updates = {}) {
+  const currentHabit = (await habitsApi.getById(habitId)) || {};
   const payload = { updatedAt: Date.now() };
   if (updates.title !== undefined) payload.title = String(updates.title || "").trim();
   if (updates.condition !== undefined) payload.condition = String(updates.condition || "").trim();
   if (updates.dayOfWeek !== undefined || updates.time !== undefined) {
-    payload.schedule = {
-      mode: "weekly",
-      dayOfWeek: Number(updates.dayOfWeek ?? 1),
-      time: String(updates.time || "09:00"),
-    };
+    payload.schedule = buildHabitSchedule(
+      {
+        dayOfWeek: updates.dayOfWeek,
+        time: updates.time,
+      },
+      currentHabit.schedule,
+    );
   }
   return habitsApi.patchById(habitId, payload);
 }
 
-export async function completeHabit(habitId, habit) {
-  const nextState = getNextHabitState(habit, Date.now());
+export async function completeHabit(habitId, habit = null) {
+  const currentHabit = habit || (await habitsApi.getById(habitId));
+  if (!currentHabit) return;
+
+  const nextState = getNextHabitState(currentHabit, Date.now());
   await habitsApi.patchById(habitId, nextState);
-  recordHabitCompletion(habit);
+  recordHabitCompletion({ ...currentHabit, ...nextState });
 }
 
 export async function resetHabitsForToday(now = Date.now()) {
   const habits = (await habitsApi.list()) || {};
-  const today = toDayString(now);
   const work = Object.entries(habits).map(([id, habit]) => {
-    if (!habit || !isWeeklyHabitDueOnDate(habit, now) || habit.lastCompleted === today) {
+    if (!habit) {
       return Promise.resolve();
     }
 
-    return habitsApi.patchById(id, {
-      status: "todo",
-      completed: false,
-      completedAt: null,
-      updatedAt: Date.now(),
-    });
+    return habitsApi.patchById(id, buildRoutineResetPatch(habit, now));
   });
   await Promise.all(work);
 }

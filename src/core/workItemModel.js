@@ -1,9 +1,10 @@
-import { requireEnum, requireNonEmptyText } from "./validation.js";
+import { requireNonEmptyText, requireEnum } from "./validation.js";
+import { normalizeSchedule, resolveStoredStatus, STORED_WORK_STATUS_VALUES } from "./scheduling.js";
 
 const ROUTINE_PRIORITY_VALUES = ["low", "medium", "high"];
 const ROUTINE_TYPE_VALUES = ["daily", "habit"];
 
-export const TASK_STATUS_VALUES = ["todo", "in_progress", "completed", "skipped", "failed"];
+export const TASK_STATUS_VALUES = STORED_WORK_STATUS_VALUES;
 export const TASK_PRIORITY_VALUES = ["critical", "important", "optional"];
 export const TASK_TAG_LAYERS = ["domain", "nature", "intent"];
 
@@ -39,18 +40,6 @@ export const TASK_TAGS = {
   },
 };
 
-function normalizeDaysOfWeek(input) {
-  const values = Array.isArray(input) ? input : [input];
-
-  return [
-    ...new Set(
-      values
-        .map((value) => Number(value))
-        .filter((value) => Number.isInteger(value) && value >= 0 && value <= 6),
-    ),
-  ].sort((a, b) => a - b);
-}
-
 function roundStat(value) {
   return Math.round((Number(value) + Number.EPSILON) * 100) / 100;
 }
@@ -61,42 +50,6 @@ function normalizeDurationMinutes(value) {
     throw new Error("Duration must be a positive number of minutes.");
   }
   return Math.round(minutes);
-}
-
-export function normalizeSchedule(scheduleInput) {
-  if (!scheduleInput) return null;
-
-  if (typeof scheduleInput === "object" && scheduleInput.mode) {
-    if (scheduleInput.mode === "daily") {
-      return { mode: "daily", time: String(scheduleInput.time || "09:00") };
-    }
-    if (scheduleInput.mode === "weekly") {
-      const daysOfWeek = normalizeDaysOfWeek(scheduleInput.daysOfWeek ?? scheduleInput.dayOfWeek);
-      if (!daysOfWeek.length) {
-        throw new Error("Weekly schedule must include at least one day.");
-      }
-
-      return {
-        mode: "weekly",
-        dayOfWeek: daysOfWeek[0],
-        daysOfWeek,
-        time: String(scheduleInput.time || "09:00"),
-      };
-    }
-    if (scheduleInput.mode === "once") {
-      const specificAt = Number(scheduleInput.specificAt || 0);
-      if (!Number.isFinite(specificAt) || specificAt <= 0) {
-        throw new Error("Schedule must be a valid date/time.");
-      }
-      return { mode: "once", specificAt };
-    }
-  }
-
-  const specificAt = Date.parse(scheduleInput);
-  if (!Number.isFinite(specificAt)) {
-    throw new Error("Schedule must be a valid date/time.");
-  }
-  return { mode: "once", specificAt };
 }
 
 function normalizeTaskTags(tags = {}) {
@@ -176,17 +129,18 @@ export function createTaskPayload({
   tags,
   schedule = null,
 }) {
+  const now = Date.now();
   const task = {
     title: requireNonEmptyText(title, "Title", { maxLength: 120 }),
     durationMinutes: normalizeDurationMinutes(durationMinutes),
     priority: requireEnum(priority, TASK_PRIORITY_VALUES, "Priority"),
     tags: normalizeTaskTags(tags),
-    schedule: normalizeSchedule(schedule),
+    schedule: normalizeSchedule(schedule, { defaultTime: "09:00" }) ?? null,
     status: "todo",
     completed: false,
     reward: null,
-    createdAt: Date.now(),
-    updatedAt: Date.now(),
+    createdAt: now,
+    updatedAt: now,
     completedAt: null,
   };
 
@@ -206,22 +160,26 @@ export function createWorkItemPayload({
   schedule = null,
   condition = "",
 }) {
-  const resolvedType = requireEnum(type, ROUTINE_TYPE_VALUES, "Type");
+  const now = Date.now();
+  const normalizedSchedule = normalizeSchedule(schedule, { defaultTime: "09:00" }) ?? null;
 
   return {
     title: requireNonEmptyText(title, "Title", { maxLength: 120 }),
-    type: resolvedType,
+    type: requireEnum(type, ROUTINE_TYPE_VALUES, "Type"),
     priority: requireEnum(priority, ROUTINE_PRIORITY_VALUES, "Priority"),
-    schedule: normalizeSchedule(schedule),
+    schedule: normalizedSchedule,
     status: "todo",
     condition: String(condition || "").trim(),
     completed: false,
     reward: {},
-    createdAt: Date.now(),
-    updatedAt: Date.now(),
+    createdAt: now,
+    updatedAt: now,
+    completedAt: null,
+    lastCompletedOn: null,
+    lastCompletedAt: null,
   };
 }
 
 export function resolveTaskStatus(value) {
-  return requireEnum(value, TASK_STATUS_VALUES, "Status");
+  return resolveStoredStatus(value);
 }
