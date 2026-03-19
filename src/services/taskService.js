@@ -31,8 +31,9 @@ function buildOccurrenceTrackingUpdate(completionPatch = {}) {
 }
 
 function normalizeTaskUpdatePayload(updates = {}, currentTask = {}) {
+  const now = Date.now();
   const payload = {
-    updatedAt: Date.now(),
+    updatedAt: now,
   };
 
   if (updates.title !== undefined) {
@@ -105,6 +106,7 @@ export async function completeTask(taskId, task = null) {
   const currentTask = task || (await tasksApi.getById(taskId));
   if (!currentTask) return;
 
+  const now = Date.now();
   const completion = calculateTaskReward(currentTask);
   const completionPatch = buildCompletionPatch(currentTask, Date.now());
   const occurrenceTrackingUpdate = buildOccurrenceTrackingUpdate(completionPatch);
