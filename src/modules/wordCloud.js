@@ -48,7 +48,25 @@ function renderWordCloud(container, votesMap) {
 }
 
 export function initWordCloud(elements, notifyError) {
-  const state = { pollState: null, votes: {} };
+  const state = { pollState: null, votes: {}, role: null, declaredVoterId: "" };
+
+  const applyRoleUi = () => {
+    const isAdmin = state.role === "admin";
+    const isVoter = state.role === "voter";
+
+    elements.wordCloudDurationInput.disabled = !isAdmin;
+    elements.wordCloudStartBtn.hidden = !isAdmin;
+    elements.wordCloudStopBtn.hidden = !isAdmin;
+
+    elements.wordCloudVoterIdInput.disabled = !isVoter;
+    elements.wordCloudVoteInput.disabled = !isVoter;
+    elements.wordCloudVoteBtn.hidden = !isVoter;
+
+    if (isVoter) {
+      elements.wordCloudVoterIdInput.value = state.declaredVoterId;
+      elements.wordCloudVoterIdInput.readOnly = true;
+    }
+  };
 
   const render = () => {
     const open = isPollOpen(state.pollState);
@@ -86,6 +104,28 @@ export function initWordCloud(elements, notifyError) {
     render();
   });
 
+  elements.wordCloudSelectAdminBtn.addEventListener("click", () => {
+    state.role = "admin";
+    elements.wordCloudRolePopup.hidden = true;
+    applyRoleUi();
+  });
+
+  elements.wordCloudSelectVoterBtn.addEventListener("click", () => {
+    elements.wordCloudVoterDeclareArea.hidden = false;
+  });
+
+  elements.wordCloudConfirmVoterBtn.addEventListener("click", () => {
+    const declaredId = normalizeVoterId(elements.wordCloudDeclareVoterIdInput.value);
+    if (!declaredId) {
+      notifyError(new Error("Vui lòng nhập số/mã voter"), "Thiếu mã voter");
+      return;
+    }
+    state.role = "voter";
+    state.declaredVoterId = declaredId;
+    elements.wordCloudRolePopup.hidden = true;
+    applyRoleUi();
+  });
+
   elements.wordCloudStartBtn.addEventListener("click", async () => {
     try {
       const minutes = Number(elements.wordCloudDurationInput.value || 3);
@@ -101,11 +141,24 @@ export function initWordCloud(elements, notifyError) {
     }
   });
 
+  elements.wordCloudStopBtn.addEventListener("click", async () => {
+    try {
+      await wordCloudApi.setPollState({
+        ...(state.pollState || {}),
+        isOpen: false,
+        endsAt: Date.now(),
+      });
+    } catch (error) {
+      notifyError(error, "Không thể dừng bình chọn");
+    }
+  });
+
   elements.wordCloudVoteBtn.addEventListener("click", async () => {
     try {
       const voterId = normalizeVoterId(elements.wordCloudVoterIdInput.value);
       const value = String(elements.wordCloudVoteInput.value || "").trim();
       if (!voterId) throw new Error("Nhập mã người dùng");
+      if (voterId !== state.declaredVoterId) throw new Error("Mã voter không khớp mã đã khai báo");
       if (!value) throw new Error("Nhập nội dung bình chọn");
       if (value.length > 3) throw new Error("Tối đa 3 ký tự");
       if (!isPollOpen(state.pollState)) throw new Error("Phiên bình chọn đã đóng");
@@ -129,5 +182,6 @@ export function initWordCloud(elements, notifyError) {
     render();
   }, 1000);
 
+  applyRoleUi();
   render();
 }

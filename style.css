@@ -553,3 +553,26 @@ h4 {
   border-radius: 999px;
   padding: 4px 10px;
 }
+
+.role-popup {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: grid;
+  place-items: center;
+  z-index: 1000;
+}
+
+.role-popup[hidden] {
+  display: none;
+}
+
+.role-popup-card {
+  width: min(420px, 92vw);
+}
+
+#wordCloudVoterDeclareArea {
+  margin-top: 12px;
+  display: grid;
+  gap: 8px;
+}
