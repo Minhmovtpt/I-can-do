@@ -127,7 +127,7 @@ export function initWordCloud(elements, notifyError) {
   elements.wordCloudSelectAdminBtn.addEventListener("click", () => {
     const adminCode = normalizeVoterId(window.prompt("Nhập mã admin") || "");
     if (adminCode !== "9119") {
-      notifyError(new Error("Chỉ mã 9119 mới được làm admin"), "Sai mã admin");
+      notifyError(new Error("Mã admin không hợp lệ"), "Sai mã admin");
       return;
     }
     state.role = "admin";
