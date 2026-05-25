@@ -198,6 +198,21 @@ export const calendarApi = {
   deleteEventById: (eventId) => destroy(`${PATHS.calendarEvents}/${eventId}`),
 };
 
+
+export const wordCloudApi = {
+  subscribePollState: (callback) => subscribe(PATHS.wordCloudPollState, callback),
+  setPollState: (state) => write(PATHS.wordCloudPollState, state),
+  subscribeVotes: (callback) => subscribe(PATHS.wordCloudVotes, callback),
+  voteOnce: async (voterId, value) => {
+    const txPath = `${PATHS.wordCloudVotes}/${voterId}`;
+    const result = await transaction(txPath, (current) => {
+      if (current) return current;
+      return { voterId, value, createdAt: Date.now() };
+    });
+    return Boolean(result && result.value === value);
+  },
+};
+
 export async function resetTasksDomain() {
   await Promise.all([
     write(PATHS.tasks, null),

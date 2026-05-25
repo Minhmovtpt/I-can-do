@@ -9,6 +9,7 @@ import { initNotes } from "../modules/notes.js";
 import { initSettings } from "../modules/settings.js";
 import { initWebShortcuts } from "../modules/webShortcuts.js";
 import { initFinanceGuard } from "../modules/financeGuard.js";
+import { initWordCloud } from "../modules/wordCloud.js";
 import { createNote } from "../services/noteService.js";
 import { buildScheduledItems, toDayKey } from "../core/calendarLogic.js";
 import { isWeeklyHabitDueOnDate } from "../core/habitLogic.js";
@@ -101,6 +102,14 @@ const elements = {
   financePasswordInput: document.getElementById("financePasswordInput"),
   financeUnlockBtn: document.getElementById("financeUnlockBtn"),
   financeCancelBtn: document.getElementById("financeCancelBtn"),
+  wordCloudDurationInput: document.getElementById("wordCloudDurationInput"),
+  wordCloudStartBtn: document.getElementById("wordCloudStartBtn"),
+  wordCloudStatus: document.getElementById("wordCloudStatus"),
+  wordCloudVoterIdInput: document.getElementById("wordCloudVoterIdInput"),
+  wordCloudVoteInput: document.getElementById("wordCloudVoteInput"),
+  wordCloudVoteBtn: document.getElementById("wordCloudVoteBtn"),
+  wordCloudCloud: document.getElementById("wordCloudCloud"),
+  wordCloudTopList: document.getElementById("wordCloudTopList"),
 };
 
 function notifyError(error, fallback = "Operation failed") {
@@ -317,6 +326,7 @@ function init() {
   initFocus(elements, notifyError);
   initCalendar(elements, notifyError);
   initWebShortcuts(elements);
+  initWordCloud(elements, notifyError);
   initQuickNote();
   initDateTime();
   initActivityLog();

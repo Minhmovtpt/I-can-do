@@ -12,6 +12,7 @@ export {
   activityApi,
   calendarApi,
   webShortcutsApi,
+  wordCloudApi,
   resetTasksDomain,
   resetEntireDatabase,
 } from "./firebaseService.js";
