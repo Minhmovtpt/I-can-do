@@ -104,12 +104,19 @@ const elements = {
   financeCancelBtn: document.getElementById("financeCancelBtn"),
   wordCloudDurationInput: document.getElementById("wordCloudDurationInput"),
   wordCloudStartBtn: document.getElementById("wordCloudStartBtn"),
+  wordCloudStopBtn: document.getElementById("wordCloudStopBtn"),
   wordCloudStatus: document.getElementById("wordCloudStatus"),
   wordCloudVoterIdInput: document.getElementById("wordCloudVoterIdInput"),
   wordCloudVoteInput: document.getElementById("wordCloudVoteInput"),
   wordCloudVoteBtn: document.getElementById("wordCloudVoteBtn"),
   wordCloudCloud: document.getElementById("wordCloudCloud"),
   wordCloudTopList: document.getElementById("wordCloudTopList"),
+  wordCloudSelectAdminBtn: document.getElementById("wordCloudSelectAdminBtn"),
+  wordCloudSelectVoterBtn: document.getElementById("wordCloudSelectVoterBtn"),
+  wordCloudRolePopup: document.getElementById("wordCloudRolePopup"),
+  wordCloudVoterDeclareArea: document.getElementById("wordCloudVoterDeclareArea"),
+  wordCloudDeclareVoterIdInput: document.getElementById("wordCloudDeclareVoterIdInput"),
+  wordCloudConfirmVoterBtn: document.getElementById("wordCloudConfirmVoterBtn"),
 };
 
 function notifyError(error, fallback = "Operation failed") {
@@ -317,6 +324,7 @@ function initActivityLog() {
 function init() {
   const financeGuard = initFinanceGuard(elements);
   initNavigation(financeGuard);
+  switchMainView("word-cloud");
   initRewardEngine({ notifyError });
   initStats(elements);
   initTasks(elements, notifyError);

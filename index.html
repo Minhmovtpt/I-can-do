@@ -12,18 +12,18 @@
       <aside class="sidebar card">
         <h2>Mode</h2>
         <nav class="sidebar-nav" id="sidebarNav">
-          <button class="nav-btn is-active" data-view="dashboard" title="Dashboard">🏠</button>
-          <button class="nav-btn" data-view="calendar" title="Calendar">📅</button>
-          <button class="nav-btn" data-view="notes" title="Notes">📝</button>
-          <button class="nav-btn" data-view="settings" title="Settings">⚙️</button>
-          <button class="nav-btn" data-view="finance" title="Finance">💰</button>
-          <button class="nav-btn" data-view="stats" title="Stats">📊</button>
-          <button class="nav-btn" data-view="word-cloud" title="Word Cloud">☁️</button>
+          <button class="nav-btn" data-view="dashboard" title="Dashboard" hidden>🏠</button>
+          <button class="nav-btn" data-view="calendar" title="Calendar" hidden>📅</button>
+          <button class="nav-btn" data-view="notes" title="Notes" hidden>📝</button>
+          <button class="nav-btn" data-view="settings" title="Settings" hidden>⚙️</button>
+          <button class="nav-btn" data-view="finance" title="Finance" hidden>💰</button>
+          <button class="nav-btn" data-view="stats" title="Stats" hidden>📊</button>
+          <button class="nav-btn is-active" data-view="word-cloud" title="Word Cloud">☁️</button>
         </nav>
       </aside>
 
       <main class="main-area">
-        <section class="main-view is-active" data-view="dashboard">
+        <section class="main-view" data-view="dashboard">
           <section class="card dashboard-card dashboard-compact" id="dateTimeCard">
             <h2>Date & Time</h2>
             <div class="date-time-day" id="currentDayOfWeek">-</div>
@@ -186,13 +186,14 @@
         </section>
 
 
-        <section class="main-view" data-view="word-cloud">
+        <section class="main-view is-active" data-view="word-cloud">
           <section class="card word-cloud">
             <h2>Word Cloud Voting</h2>
             <div class="word-cloud-controls">
               <label>Thời gian (phút)</label>
               <input type="number" id="wordCloudDurationInput" min="1" value="3" />
-              <button id="wordCloudStartBtn">Bắt đầu bình chọn</button>
+              <button id="wordCloudStartBtn">Bắt đầu/Cập nhật</button>
+              <button id="wordCloudStopBtn" class="btn-danger">Dừng</button>
               <strong id="wordCloudStatus">Đã đóng</strong>
             </div>
             <div class="word-cloud-controls">
@@ -323,5 +324,20 @@
     </div>
 
     <script type="module" src="./src/ui/ui.js"></script>
+    <div class="role-popup" id="wordCloudRolePopup">
+      <div class="role-popup-card card">
+        <h2>Chọn vai trò</h2>
+        <p>Vui lòng chọn vai trò để vào phiên Word Cloud.</p>
+        <div class="item-actions">
+          <button id="wordCloudSelectAdminBtn">Admin</button>
+          <button id="wordCloudSelectVoterBtn">Voter</button>
+        </div>
+        <div id="wordCloudVoterDeclareArea" hidden>
+          <input type="text" id="wordCloudDeclareVoterIdInput" placeholder="Nhập số/mã của bạn" />
+          <button id="wordCloudConfirmVoterBtn">Xác nhận vào voter</button>
+        </div>
+      </div>
+    </div>
+
   </body>
 </html>
