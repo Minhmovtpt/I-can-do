@@ -21,6 +21,20 @@ function computeTopThree(votesMap) {
     .map(([value, count], index) => ({ rank: index + 1, value, count }));
 }
 
+function colorFromValue(value, intensity) {
+  const text = String(value || "");
+  let hash = 0;
+  for (let i = 0; i < text.length; i += 1) hash = (hash * 31 + text.charCodeAt(i)) % 360;
+
+  const lightness = Math.round(75 - intensity * 35);
+  const borderLightness = Math.max(20, lightness - 12);
+  return {
+    background: `hsl(${hash} 78% ${lightness}% / 0.35)`,
+    border: `hsl(${hash} 75% ${borderLightness}% / 0.8)`,
+    text: `hsl(${hash} 80% ${Math.max(12, borderLightness - 15)}%)`,
+  };
+}
+
 function renderWordCloud(container, votesMap) {
   const counter = new Map();
   Object.values(votesMap || {}).forEach((entry) => {
@@ -40,8 +54,14 @@ function renderWordCloud(container, votesMap) {
     .forEach(([value, count]) => {
       const chip = document.createElement("span");
       chip.className = "word-cloud-item";
-      const scale = 0.7 + (count / max) * 1.3;
+      const intensity = max ? count / max : 0;
+      const scale = 0.85 + intensity * 1.75;
+      const colors = colorFromValue(value, intensity);
       chip.style.fontSize = `${Math.round(scale * 16)}px`;
+      chip.style.transform = `scale(${(0.9 + intensity * 0.35).toFixed(2)})`;
+      chip.style.background = colors.background;
+      chip.style.borderColor = colors.border;
+      chip.style.color = colors.text;
       chip.textContent = `${value} (${count})`;
       container.appendChild(chip);
     });
@@ -105,6 +125,11 @@ export function initWordCloud(elements, notifyError) {
   });
 
   elements.wordCloudSelectAdminBtn.addEventListener("click", () => {
+    const adminCode = normalizeVoterId(window.prompt("Nhập mã admin") || "");
+    if (adminCode !== "9119") {
+      notifyError(new Error("Mã admin không hợp lệ"), "Sai mã admin");
+      return;
+    }
     state.role = "admin";
     elements.wordCloudRolePopup.hidden = true;
     applyRoleUi();

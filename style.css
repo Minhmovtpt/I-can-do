@@ -552,6 +552,8 @@ h4 {
   border: 1px solid rgba(92, 161, 255, 0.3);
   border-radius: 999px;
   padding: 4px 10px;
+  transform-origin: center;
+  transition: transform 0.2s ease, background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
 }
 
 .role-popup {
