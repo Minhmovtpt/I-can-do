@@ -12,4 +12,6 @@ export const PATHS = Object.freeze({
   calendar: "calendar",
   calendarEvents: "calendar/events",
   webShortcuts: "webShortcuts",
+  wordCloudPollState: "wordCloud/pollState",
+  wordCloudVotes: "wordCloud/votes",
 });
